@@ -25,12 +25,18 @@ python src\data\build_cache.py --workers 12
 python src\features\extract.py --backbone tf_efficientnet_b0 --size 224
 python src\features\extract.py --backbone tf_efficientnet_b0 --size 384
 python src\features\extract.py --backbone resnet50 --size 224
-# python -m pytest tests\test_features.py -v   # Acceptance Test 7.1
+python -m pytest tests\test_features.py -v   # Acceptance Test 7.1
+# If test_p2_logistic_regression_qwk_sanity[resnet50-224] fails again, run the
+# diagnostic below and paste the output before touching QWK_THRESHOLD.
+python src\experiments\diagnose_resnet50_qwk.py
 
-# ---- Phase 4: Claims 1b / 2 / 2b on cached features (writes here later) ----
-# python src\experiments\claim1b_stratified.py
-# python src\experiments\claim2_protocols.py
-# python src\experiments\claim2b_partner_ablation.py
+# ---- Phase 4: Claims 1b / 2 / 2b on cached features (MASTER_PLAN.md Part 8) ----
+# 1b is pure label analysis (no GPU/features needed, ran once already in the sandbox).
+python src\experiments\claim1b_stratified.py
+# 2 and 2b need a features/*.npz -- effnetb0@224 is the default backbone/size;
+# rerun with --backbone/--size to compare across configs.
+python src\experiments\claim2_protocols.py --backbone tf_efficientnet_b0 --size 224
+python src\experiments\claim2b_partner_ablation.py --backbone tf_efficientnet_b0 --size 224
 
 # ---- Phase 5: Claim 3 both-eyes model (writes here later) ----
 # python src\experiments\claim3_both_eyes.py

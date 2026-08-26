@@ -1,0 +1,172 @@
+{
+  "meta": {
+    "manifest_rows_total": 38788,
+    "manifest_rows_excluded": 8,
+    "eyepacs_rows_active": 35118,
+    "unique_eyepacs_patients_active": 17563,
+    "patients_with_both_eyes_active": 17555,
+    "patients_with_one_eye_only_after_exclusion": 8
+  },
+  "correlation_all": {
+    "quadratic_weighted_kappa": 0.854672503858995,
+    "qwk_ci95": [
+      0.8459709161121164,
+      0.863060991200427
+    ],
+    "linear_weighted_kappa": 0.7911018312340921,
+    "unweighted_kappa": 0.7046450347234783,
+    "spearman_rho": 0.8181275456180147,
+    "spearman_p": 0.0,
+    "exact_agreement": 0.8725719168328112,
+    "agreement_within_1_grade": 0.9570492737111934,
+    "mean_abs_grade_difference": 0.17339789233836514,
+    "diff_distribution": {
+      "0": 15318,
+      "1": 1483,
+      "2": 722,
+      "3": 11,
+      "4": 21
+    },
+    "referable_agreement": 0.9397322700085445,
+    "referable_kappa": 0.8085823053656594
+  },
+  "correlation_left_ge1": {
+    "quadratic_weighted_kappa": 0.6558930380441924,
+    "qwk_ci95": [
+      0.63445674472971,
+      0.6750798337470638
+    ],
+    "linear_weighted_kappa": 0.576882136747846,
+    "unweighted_kappa": 0.506856509053484,
+    "spearman_rho": 0.712104125843522,
+    "spearman_p": 0.0,
+    "exact_agreement": 0.6751972702068672,
+    "agreement_within_1_grade": 0.9048837705267647,
+    "mean_abs_grade_difference": 0.42589038174450844,
+    "diff_distribution": {
+      "0": 3166,
+      "1": 1077,
+      "2": 428,
+      "3": 8,
+      "4": 10
+    },
+    "referable_agreement": 0.8400511836212412,
+    "referable_kappa": 0.6224214501335414
+  },
+  "correlation_left_ge2": {
+    "quadratic_weighted_kappa": 0.5375632390068917,
+    "qwk_ci95": [
+      0.5095481094790306,
+      0.5663354919578293
+    ],
+    "linear_weighted_kappa": 0.5008928411359825,
+    "unweighted_kappa": 0.4765412893198926,
+    "spearman_rho": 0.6544839563085175,
+    "spearman_p": 0.0,
+    "exact_agreement": 0.7379310344827587,
+    "agreement_within_1_grade": 0.8735632183908046,
+    "mean_abs_grade_difference": 0.3954022988505747,
+    "diff_distribution": {
+      "0": 2568,
+      "1": 472,
+      "2": 426,
+      "3": 4,
+      "4": 10
+    },
+    "referable_agreement": 0.8353448275862069,
+    "referable_kappa": 0.0
+  },
+  "lookup_table": {
+    "0": 0,
+    "1": 1,
+    "2": 2,
+    "3": 3,
+    "4": 4
+  },
+  "lookup_test_split": {
+    "train_n": 12288,
+    "test_n": 5267,
+    "test_frac": 0.3
+  },
+  "lookup_overall": {
+    "n": 5267,
+    "qwk": 0.8510589656397676
+  },
+  "lookup_left_ge1": {
+    "n": 1460,
+    "qwk": 0.6535693002579381
+  },
+  "lookup_left_ge2": {
+    "n": 1078,
+    "qwk": 0.5340283555084968
+  },
+  "lookup_accuracy_per_left_grade": {
+    "0": {
+      "n": 3807,
+      "accuracy": 0.9429997373259784
+    },
+    "1": {
+      "n": 382,
+      "accuracy": 0.4581151832460733
+    },
+    "2": {
+      "n": 837,
+      "accuracy": 0.7264038231780168
+    },
+    "3": {
+      "n": 137,
+      "accuracy": 0.7445255474452555
+    },
+    "4": {
+      "n": 104,
+      "accuracy": 0.7211538461538461
+    }
+  },
+  "conditional_distribution_right_given_left": {
+    "0": {
+      "0": 0.9445048966267682,
+      "1": 0.031556039173014146,
+      "2": 0.022850924918389554,
+      "3": 0.000233172703248873,
+      "4": 0.000854966578579201
+    },
+    "1": {
+      "0": 0.358974358974359,
+      "1": 0.4946236559139785,
+      "2": 0.141439205955335,
+      "3": 0.0016542597187758478,
+      "4": 0.0033085194375516956
+    },
+    "2": {
+      "0": 0.12435233160621761,
+      "1": 0.08216136195410807,
+      "2": 0.7394522575869726,
+      "3": 0.03552923760177646,
+      "4": 0.018504811250925242
+    },
+    "3": {
+      "0": 0.007058823529411765,
+      "1": 0.002352941176470588,
+      "2": 0.20470588235294118,
+      "3": 0.7223529411764706,
+      "4": 0.06352941176470588
+    },
+    "4": {
+      "0": 0.028328611898016998,
+      "1": 0.0028328611898017,
+      "2": 0.11048158640226628,
+      "3": 0.11331444759206799,
+      "4": 0.7450424929178471
+    }
+  },
+  "permuted_patient_null": {
+    "observed_qwk": 0.854672503858995,
+    "n_permutations": 2000,
+    "null_mean": -7.004586008602781e-05,
+    "null_std": 0.007373044148939627,
+    "null_max": 0.024376542760427444,
+    "null_p95": 0.012220559937147435,
+    "p_value": 0.0
+  },
+  "honest_finding": "Per-grade accuracy does NOT collapse the way MASTER_PLAN.md's a-priori expectation predicted (\"fails on grades 1, 3, and 4\"). What the data actually show: grade(s) [1] genuinely collapse toward chance ([45.8]% accuracy), while grade(s) [0, 2, 3, 4] are all reasonably well predicted ([94.3, 72.6, 74.5, 72.1]% accuracy) -- grades 3 and 4 (Severe/Proliferative) are NOT among the weak ones, contrary to the pre-registered expectation. Only grade 1 (Mild NPDR, the subtlest/hardest-to-grade category) truly collapses. Separately: the AGGREGATE lookup-table QWK tracks the raw inter-eye QWK almost exactly at every stratification level (see Figure 2 right panel) -- the shortcut is not weaker in aggregate, it is weaker specifically for one grade. Both correlation and lookup QWK far exceed the permuted-patient null at every stratification level. Report the ACTUAL per-grade pattern (grade 1 only) in the paper, not the plan's predicted one -- this is a stronger, more precise finding than the a-priori guess."
+}
