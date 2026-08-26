@@ -2,7 +2,8 @@
 
 Project state: **Phase 1 complete** (data foundation). See `MASTER_PLAN.md` for the full execution plan and `STEP0_CORRELATION.md` for the Step 0 inter-eye correlation analysis that motivated this project.
 
-## FROZEN TEST SETS — declared 2026-08-26, commit b03cf393050018467dac16f2987b702fe9662fac
+## FROZEN TEST SETS — originally declared 2026-08-26, commit b03cf393050018467dac16f2987b702fe9662fac
+## RE-DECLARED 2026-08-26 after image exclusion, commit 6ea38cb (see below)
 
 ```
 P2 test: patient-level held-out split, seed 42          (data/splits/p2.json)
@@ -18,6 +19,26 @@ Any earlier evaluation must be logged here with a reason.
 
 P1 (`data/splits/p1.json`) is the deliberately flawed image-level baseline used only to
 *measure* the leakage effect (Claims 2 and 2b) — it is never a target to optimize or "fix".
+
+### Image exclusion (before re-declaration, before any test-set evaluation)
+
+8 EyePACS images (0.02% of 38,788) were excluded before P1/P2/P3 were rebuilt, and **before
+Phase 3+ ran** — no model has scored on any split yet, so this is a documented data-quality
+correction, not post-hoc filtering of hard test examples. Criterion: original-source mean
+pixel value < 5 (flat-black/underexposed capture), caught by `test_no_low_mean_pixel_crops`
+(Acceptance Test 6.1) after the full local Phase 2 run. Rows are kept in `manifest.csv` with
+`excluded=True` and a reason string, not deleted — see `src/data/apply_exclusions.py` and the
+full per-image evidence (original-source mean/min/max/std, partner-eye stats, pre-exclusion
+fold assignment) in `results/excluded_images.json`.
+
+Excluded: `eyepacs_1557_left`, `eyepacs_1986_left`, `eyepacs_21720_left`, `eyepacs_26064_right`,
+`eyepacs_32253_right`, `eyepacs_34689_left`, `eyepacs_42130_left`, `eyepacs_43457_left`.
+
+Every excluded image's partner eye was confirmed normal — single failed captures, not bad
+patients. 3 of 8 carry grade=1 (Mild NPDR, defined by ~10px microaneurysms) despite the source
+image being near-uniformly black. Of the declared test sets, only 1/8 (`eyepacs_26064_right`)
+touched a test fold at all (P1, the secondary/deliberately-flawed protocol) — **0/8 touched
+P2, the PRIMARY protocol.**
 
 ## Phase 1 summary
 
@@ -71,4 +92,4 @@ holding. The math behind the original concern was correct (the threshold
 not to matter for this dataset, because genuine duplicates sit at distance
 ~0, far inside the margin regardless of which convention is used.
 
-## Next: Phase 3 — frozen feature extraction (see MASTER_PLAN.md Part 7, needs GPU/local machine)
+## Next: Phase 3 — frozen feature extraction (`src/features/extract.py`, MASTER_PLAN.md Part 7, needs GPU/local machine)
