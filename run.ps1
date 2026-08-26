@@ -18,8 +18,14 @@ python src\data\build_cache.py --workers 12
 # then LOOK AT figures\sanity_crops.png yourself before continuing.
 # python -m pytest tests\test_preprocess.py -v
 
-# ---- Phase 3: frozen feature extraction (writes here later) ----
-# python src\features\extract.py --workers 12
+# ---- Phase 3: frozen feature extraction (needs your CUDA GPU) ----
+# One-time (if not already installed): pip install timm
+# Three configs, ~45 min total per MASTER_PLAN.md Part 7. Each is independently
+# resumable (Ctrl+C-safe) -- rerun the same command to pick up where it left off.
+python src\features\extract.py --backbone tf_efficientnet_b0 --size 224
+python src\features\extract.py --backbone tf_efficientnet_b0 --size 384
+python src\features\extract.py --backbone resnet50 --size 224
+# python -m pytest tests\test_features.py -v   # Acceptance Test 7.1
 
 # ---- Phase 4: Claims 1b / 2 / 2b on cached features (writes here later) ----
 # python src\experiments\claim1b_stratified.py
