@@ -41,6 +41,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import torch
+from PIL import Image
+from torch.utils.data import Dataset
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
@@ -52,36 +55,38 @@ IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
 
 
+class FeatureDataset(Dataset):
+    """Loads an already-preprocessed {size}px cached JPEG and normalizes it
+    with standard ImageNet stats. No resize/crop here on purpose --
+    build_cache.py already produced a square crop at exactly `size`, and for
+    effnetb0@384 we deliberately feed a larger-than-pretrained input into a
+    fully-convolutional/global-pooled backbone rather than resizing back
+    down to 224.
+
+    Defined at module level (not nested in a function) because Windows'
+    spawn-based multiprocessing needs to pickle this class by reference to
+    hand it to DataLoader worker processes -- a locally-scoped class can't
+    be pickled and raises AttributeError: Can't pickle local object."""
+
+    def __init__(self, ids, img_dir):
+        self.ids = ids
+        self.img_dir = img_dir
+        self.mean = torch.tensor(IMAGENET_MEAN).view(3, 1, 1)
+        self.std = torch.tensor(IMAGENET_STD).view(3, 1, 1)
+
+    def __len__(self):
+        return len(self.ids)
+
+    def __getitem__(self, idx):
+        image_id = self.ids[idx]
+        with Image.open(self.img_dir / f"{image_id}.jpg") as im:
+            im = im.convert("RGB")
+            arr = torch.from_numpy(np.array(im)).permute(2, 0, 1).float() / 255.0
+        arr = (arr - self.mean) / self.std
+        return arr, image_id
+
+
 def build_dataset(image_ids, img_dir):
-    import torch
-    from torch.utils.data import Dataset
-    from PIL import Image
-
-    class FeatureDataset(Dataset):
-        """Loads an already-preprocessed {size}px cached JPEG and normalizes
-        it with standard ImageNet stats. No resize/crop here on purpose --
-        build_cache.py already produced a square crop at exactly `size`, and
-        for effnetb0@384 we deliberately feed a larger-than-pretrained input
-        into a fully-convolutional/global-pooled backbone rather than
-        resizing back down to 224."""
-
-        def __init__(self, ids, img_dir):
-            self.ids = ids
-            self.img_dir = img_dir
-            self.mean = torch.tensor(IMAGENET_MEAN).view(3, 1, 1)
-            self.std = torch.tensor(IMAGENET_STD).view(3, 1, 1)
-
-        def __len__(self):
-            return len(self.ids)
-
-        def __getitem__(self, idx):
-            image_id = self.ids[idx]
-            with Image.open(self.img_dir / f"{image_id}.jpg") as im:
-                im = im.convert("RGB")
-                arr = torch.from_numpy(np.array(im)).permute(2, 0, 1).float() / 255.0
-            arr = (arr - self.mean) / self.std
-            return arr, image_id
-
     return FeatureDataset(image_ids, img_dir)
 
 
@@ -165,7 +170,6 @@ def main():
     print(f"Backbone: {args.backbone}   size: {args.size}   batch_size: {batch_size}   "
           f"num_workers: {args.num_workers}   device: {args.device}")
 
-    import torch
     import timm
     from torch.utils.data import DataLoader
 
