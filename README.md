@@ -38,4 +38,37 @@ Run `PYTHONPATH=/tmp/pylibs python3 -m pytest tests/ -v` from the project root t
 Environment note: pip installs on this machine go to `/tmp/pylibs` (the default target ran
 out of disk) — prefix Python commands with `PYTHONPATH=/tmp/pylibs`.
 
-## Next: Phase 2 — preprocessing cache (see MASTER_PLAN.md Part 6)
+## Dedup threshold review (post-Phase-2, pre-Phase-3)
+
+Reviewed whether hash_size=16 (256-bit phash) + Hamming<=5 was too tight —
+"5" is the common convention for the *64-bit* phash default, so as an
+absolute bit count on a 256-bit hash it's ~4x stricter than the convention
+it was borrowed from. Checked empirically (`src/data/dedup_threshold_sweep.py`,
+`results/dedup_threshold_sweep.json`, `figures/dedup_threshold_sweep.png`)
+rather than trusting the scaling arithmetic alone:
+
+- **Calibration**: a real near-duplicate (resize +/-2px, re-encode JPEG q90)
+  scores Hamming distance **0** — nowhere near the threshold=5 cutoff.
+- **EyePACS threshold sweep**: 0 pairs at <=5, 1 at <=10, 123 at <=20, 8,876 at
+  <=30 — no plateau, meaning there's no hidden cluster of real duplicates
+  sitting just past 5. It's a smooth climb straight into noise.
+- **Diagnostic on the <=25 candidates** (790 pairs, `results/eyepacs_near_dup_candidates.csv`):
+  786/790 are *different* patients, and grade agreement is 62.7% — barely
+  above the 56.8% chance baseline from EyePACS's grade distribution. A true
+  duplicate photo must carry the same grade (same image -> same diagnosis);
+  chance-level agreement means these are coincidental structural matches
+  (similar illumination/framing, common to the photography protocol), not
+  duplicated images. Visually confirmed on the closest pair (distance 10,
+  eyepacs_17153_right vs eyepacs_19840_right, grades 0 vs 2) — different
+  vasculature, not the same photo.
+- **APTOS**, by contrast, shows a real plateau (148 pairs at both <=5 and
+  <=10), consistent with the genuine duplicates already found in Phase 1.
+
+**Decision: threshold unchanged, splits NOT rebuilt.** `tests/test_dedup_threshold.py`
+locks this in — it fails loudly if a future data change makes it stop
+holding. The math behind the original concern was correct (the threshold
+*is* numerically stricter than the 64-bit convention); it just turned out
+not to matter for this dataset, because genuine duplicates sit at distance
+~0, far inside the margin regardless of which convention is used.
+
+## Next: Phase 3 — frozen feature extraction (see MASTER_PLAN.md Part 7, needs GPU/local machine)

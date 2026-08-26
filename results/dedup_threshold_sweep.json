@@ -1,0 +1,59 @@
+{
+  "thresholds": [
+    5,
+    10,
+    20,
+    30,
+    40
+  ],
+  "diagnostic_threshold": 25,
+  "by_dataset": {
+    "eyepacs": {
+      "n_images": 35126,
+      "n_total_pairs": 616900375,
+      "counts_by_threshold": {
+        "5": 0,
+        "10": 1,
+        "20": 123,
+        "30": 8876,
+        "40": 171142
+      },
+      "compute_seconds": 18.5
+    },
+    "aptos": {
+      "n_images": 3662,
+      "n_total_pairs": 6703291,
+      "counts_by_threshold": {
+        "5": 148,
+        "10": 148,
+        "20": 163,
+        "30": 783,
+        "40": 6606
+      },
+      "compute_seconds": 0.3
+    }
+  },
+  "eyepacs_diagnostic": {
+    "n_pairs": 790,
+    "n_same_patient": 4,
+    "n_different_patient": 786,
+    "grade_agreement_rate_overall": 0.6265822784810127,
+    "grade_agreement_rate_different_patient_only": 0.6259541984732825,
+    "chance_grade_agreement_rate": 0.5684654009849847,
+    "interpretation": "Grade agreement near the chance baseline means these candidate pairs are coincidental structural matches (similar illumination/framing), not duplicate photographs -- a true duplicate must carry the same grade, since it's the same underlying image."
+  },
+  "calibration": {
+    "image_id": "eyepacs_10_left",
+    "original_size": [
+      1024,
+      1019
+    ],
+    "perturbed_size": [
+      1022,
+      1021
+    ],
+    "perturbation": "resize (w-2, h+2), re-encoded JPEG quality=90",
+    "hamming_distance": 0,
+    "exceeds_threshold_5": false
+  }
+}
