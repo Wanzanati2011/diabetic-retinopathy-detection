@@ -114,12 +114,21 @@ def main():
 
     # sanity: verify the hashing pipeline itself works, per acceptance test 5.2 —
     # hash a deliberately copied file and confirm distance 0 from its source.
+    # IMPORTANT: the copy lives in a real OS temp dir, NEVER inside the dataset
+    # folders — an earlier version copied next to the source image and relied
+    # on unlink() to clean up, which silently failed on a filesystem where
+    # delete is disabled by default (this sandbox's connected-folder mount),
+    # leaving a stray "_dedup_selftest_copy_*.jpg" file inside the actual
+    # dataset directory undetected until test_row_count_matches_files_on_disk
+    # caught it on a later run. tempfile.TemporaryDirectory is auto-cleaned
+    # and is never under the mounted project folder, so this can't recur.
     sample_row = manifest.iloc[0]
     sample_path = Path(sample_row["filepath_abs"])
-    copy_path = sample_path.parent / f"_dedup_selftest_copy_{sample_path.name}"
     import shutil
+    import tempfile
     selftest_ok = False
-    try:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        copy_path = Path(tmpdir) / f"selftest_copy_{sample_path.name}"
         shutil.copyfile(sample_path, copy_path)
         import imagehash
         from PIL import Image
@@ -129,11 +138,6 @@ def main():
         selftest_ok = (d == 0)
         print(f"Self-test (hash a byte-identical copy of {sample_row['image_id']}): Hamming distance = {d} "
               f"({'OK' if selftest_ok else 'FAIL — hashing pipeline may be broken'})")
-    finally:
-        try:
-            copy_path.unlink()
-        except Exception:
-            pass
 
     # union-find over confirmed pairs
     uf = UnionFind(manifest["image_id"].tolist())

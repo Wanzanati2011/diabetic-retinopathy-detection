@@ -187,6 +187,11 @@ def main():
 
     print(f"Loaded manifest: {len(df)} rows")
 
+    if "excluded" in df.columns:
+        n_excluded = int(df["excluded"].fillna(False).astype(bool).sum())
+        df = df[~df["excluded"].fillna(False).astype(bool)].reset_index(drop=True)
+        print(f"Filtered out {n_excluded} excluded rows (see apply_exclusions.py) -> {len(df)} active rows")
+
     print("\n=== P1 (image-level, deliberately flawed) ===")
     p1 = make_p1(df)
     (out_dir / "p1.json").write_text(json.dumps(p1, indent=2, sort_keys=True))

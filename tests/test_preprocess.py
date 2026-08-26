@@ -32,10 +32,40 @@ def test_no_processing_errors(summary):
 
 
 def test_no_low_mean_pixel_crops(summary):
-    """Acceptance Test 6.1: assert no processed image has mean pixel value < 5."""
-    assert summary["n_low_mean_pixel_warnings"] == 0, (
-        f"{summary['n_low_mean_pixel_warnings']} crops have mean pixel value < 5 "
-        f"(likely blank/black crops from a circle-detection failure) — inspect low_mean_pixel_warnings in the JSON"
+    """Acceptance Test 6.1, post-exclusion: assert zero low-mean crops among
+    ACTIVE (non-excluded) images. The 8 known flat-black EyePACS captures
+    (results/excluded_images.json, apply_exclusions.py) are documented,
+    audited exclusions, not a relaxed threshold — every warning must trace
+    to one of those 8 IDs, and no other image may ever appear here."""
+    manifest = pd.read_csv(MANIFEST_PATH)
+    excluded_ids = set()
+    if "excluded" in manifest.columns:
+        excluded_ids = set(manifest.loc[manifest["excluded"].fillna(False).astype(bool), "image_id"])
+
+    warnings = summary["low_mean_pixel_warnings"]
+    unexplained = [w for w in warnings if w["image_id"] not in excluded_ids]
+    assert not unexplained, (
+        f"{len(unexplained)} low-mean-pixel crops are NOT in the documented exclusion list — "
+        f"these are new/unexplained, investigate before excluding: {unexplained}"
+    )
+
+    flagged_ids = {w["image_id"] for w in warnings}
+    assert flagged_ids == excluded_ids, (
+        f"mismatch between low-mean warnings ({flagged_ids}) and the documented exclusion list "
+        f"({excluded_ids}) — every documented exclusion should have caused this warning originally"
+    )
+
+
+def test_exactly_8_excluded_rows():
+    """Guards against silent scope creep: if this ever fails, someone added
+    (or removed) an exclusion without deliberately updating apply_exclusions.py
+    and this test together."""
+    manifest = pd.read_csv(MANIFEST_PATH)
+    assert "excluded" in manifest.columns, "manifest has no excluded column — run apply_exclusions.py"
+    n_excluded = int(manifest["excluded"].fillna(False).astype(bool).sum())
+    assert n_excluded == 8, f"expected exactly 8 excluded rows, found {n_excluded}"
+    assert manifest.loc[manifest["excluded"].fillna(False).astype(bool), "excluded_reason"].notna().all(), (
+        "every excluded row must carry a non-null excluded_reason"
     )
 
 

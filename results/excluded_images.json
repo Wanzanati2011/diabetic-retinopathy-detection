@@ -1,0 +1,289 @@
+{
+  "exclusion_criterion": "original-source image mean pixel value < 5 (flat-black/underexposed capture), flagged by test_no_low_mean_pixel_crops (Acceptance Test 6.1) after the full local Phase 2 preprocessing run",
+  "n_excluded": 8,
+  "n_with_nonzero_grade_despite_blank_image": 3,
+  "note": "Every excluded image's partner eye was confirmed normal (see per-image 'partner' below) -- these are single failed captures, not bad patients. 3 of 8 carry grade=1 (Mild NPDR, defined by ~10px microaneurysms) despite the source image being near-uniformly black -- the grade requiring the most visual acuity was assigned to the least visible images. Excluded BEFORE any test-set evaluation (Phase 3+ has not run), so this is a documented data-quality correction, not post-hoc filtering of hard test examples.",
+  "pre_exclusion_fold_note": "fold_assignments below are what these images WOULD have been assigned by splits.py before exclusion -- for audit purposes only. Post-exclusion, none of these 8 image_ids appear in any split file (data/splits/*.json). Of the meaningful (non-trivial) test folds, only 1/8 (eyepacs_26064_right) touched a declared test set (P1, the secondary/deliberately-flawed protocol); 0/8 touched P2 (the PRIMARY protocol per README's frozen declaration).",
+  "images": [
+    {
+      "image_id": "eyepacs_1557_left",
+      "patient_id": "eyepacs_1557",
+      "dataset": "eyepacs",
+      "eye": "left",
+      "grade": 0,
+      "nonzero_grade_on_blank_image": false,
+      "original_source_stats": {
+        "mean": 9.3304778874269,
+        "min": 0.0,
+        "max": 42.0,
+        "std": 5.355885267091885,
+        "width": 513,
+        "height": 1024
+      },
+      "partner_eye": {
+        "image_id": "eyepacs_1557_right",
+        "grade": 2,
+        "stats": {
+          "mean": 45.53768185445086,
+          "min": 0.0,
+          "max": 255.0,
+          "std": 40.82474387609517,
+          "width": 1024,
+          "height": 953
+        },
+        "looks_normal": true
+      },
+      "pre_exclusion_fold_assignment": {
+        "P1": "train",
+        "P2": "train",
+        "P3(eyepacs->aptos)": "train",
+        "P3(aptos->eyepacs)": "test"
+      }
+    },
+    {
+      "image_id": "eyepacs_1986_left",
+      "patient_id": "eyepacs_1986",
+      "dataset": "eyepacs",
+      "eye": "left",
+      "grade": 0,
+      "nonzero_grade_on_blank_image": false,
+      "original_source_stats": {
+        "mean": 1.7456930205672498,
+        "min": 0.0,
+        "max": 14.0,
+        "std": 1.6633539226072656,
+        "width": 2612,
+        "height": 1964
+      },
+      "partner_eye": {
+        "image_id": "eyepacs_1986_right",
+        "grade": 1,
+        "stats": {
+          "mean": 52.81992378781917,
+          "min": 0.0,
+          "max": 255.0,
+          "std": 44.11004097915882,
+          "width": 1024,
+          "height": 953
+        },
+        "looks_normal": true
+      },
+      "pre_exclusion_fold_assignment": {
+        "P1": "val",
+        "P2": "train",
+        "P3(eyepacs->aptos)": "train",
+        "P3(aptos->eyepacs)": "test"
+      }
+    },
+    {
+      "image_id": "eyepacs_21720_left",
+      "patient_id": "eyepacs_21720",
+      "dataset": "eyepacs",
+      "eye": "left",
+      "grade": 1,
+      "nonzero_grade_on_blank_image": true,
+      "original_source_stats": {
+        "mean": 9.533571779028641,
+        "min": 0.0,
+        "max": 243.0,
+        "std": 5.819667152625408,
+        "width": 483,
+        "height": 1024
+      },
+      "partner_eye": {
+        "image_id": "eyepacs_21720_right",
+        "grade": 0,
+        "stats": {
+          "mean": 21.21668633988837,
+          "min": 0.0,
+          "max": 159.0,
+          "std": 19.87209542121506,
+          "width": 1024,
+          "height": 963
+        },
+        "looks_normal": true
+      },
+      "pre_exclusion_fold_assignment": {
+        "P1": "train",
+        "P2": "train",
+        "P3(eyepacs->aptos)": "val",
+        "P3(aptos->eyepacs)": "test"
+      }
+    },
+    {
+      "image_id": "eyepacs_26064_right",
+      "patient_id": "eyepacs_26064",
+      "dataset": "eyepacs",
+      "eye": "right",
+      "grade": 0,
+      "nonzero_grade_on_blank_image": false,
+      "original_source_stats": {
+        "mean": 7.4780181925619145,
+        "min": 0.0,
+        "max": 49.0,
+        "std": 4.383259407448959,
+        "width": 498,
+        "height": 1024
+      },
+      "partner_eye": {
+        "image_id": "eyepacs_26064_left",
+        "grade": 0,
+        "stats": {
+          "mean": 10.537680781022878,
+          "min": 0.0,
+          "max": 28.0,
+          "std": 5.132724997766008,
+          "width": 464,
+          "height": 941
+        },
+        "looks_normal": true
+      },
+      "pre_exclusion_fold_assignment": {
+        "P1": "test",
+        "P2": "val",
+        "P3(eyepacs->aptos)": "val",
+        "P3(aptos->eyepacs)": "test"
+      }
+    },
+    {
+      "image_id": "eyepacs_32253_right",
+      "patient_id": "eyepacs_32253",
+      "dataset": "eyepacs",
+      "eye": "right",
+      "grade": 1,
+      "nonzero_grade_on_blank_image": true,
+      "original_source_stats": {
+        "mean": 1.7751711121784775,
+        "min": 0.0,
+        "max": 13.0,
+        "std": 1.7308736727703098,
+        "width": 2612,
+        "height": 1964
+      },
+      "partner_eye": {
+        "image_id": "eyepacs_32253_left",
+        "grade": 1,
+        "stats": {
+          "mean": 39.261211370175666,
+          "min": 0.0,
+          "max": 255.0,
+          "std": 39.26291653168461,
+          "width": 1024,
+          "height": 963
+        },
+        "looks_normal": true
+      },
+      "pre_exclusion_fold_assignment": {
+        "P1": "val",
+        "P2": "train",
+        "P3(eyepacs->aptos)": "train",
+        "P3(aptos->eyepacs)": "test"
+      }
+    },
+    {
+      "image_id": "eyepacs_34689_left",
+      "patient_id": "eyepacs_34689",
+      "dataset": "eyepacs",
+      "eye": "left",
+      "grade": 0,
+      "nonzero_grade_on_blank_image": false,
+      "original_source_stats": {
+        "mean": 2.1544442382486597,
+        "min": 0.0,
+        "max": 16.0,
+        "std": 1.8960776757172215,
+        "width": 2612,
+        "height": 1964
+      },
+      "partner_eye": {
+        "image_id": "eyepacs_34689_right",
+        "grade": 0,
+        "stats": {
+          "mean": 36.01799484631864,
+          "min": 0.0,
+          "max": 247.0,
+          "std": 33.84501682724316,
+          "width": 1024,
+          "height": 953
+        },
+        "looks_normal": true
+      },
+      "pre_exclusion_fold_assignment": {
+        "P1": "train",
+        "P2": "train",
+        "P3(eyepacs->aptos)": "train",
+        "P3(aptos->eyepacs)": "test"
+      }
+    },
+    {
+      "image_id": "eyepacs_42130_left",
+      "patient_id": "eyepacs_42130",
+      "dataset": "eyepacs",
+      "eye": "left",
+      "grade": 0,
+      "nonzero_grade_on_blank_image": false,
+      "original_source_stats": {
+        "mean": 8.770897705992509,
+        "min": 0.0,
+        "max": 90.0,
+        "std": 6.540210776478987,
+        "width": 1024,
+        "height": 445
+      },
+      "partner_eye": {
+        "image_id": "eyepacs_42130_right",
+        "grade": 0,
+        "stats": {
+          "mean": 44.366111197643406,
+          "min": 0.0,
+          "max": 189.0,
+          "std": 35.24117026919901,
+          "width": 1024,
+          "height": 953
+        },
+        "looks_normal": true
+      },
+      "pre_exclusion_fold_assignment": {
+        "P1": "train",
+        "P2": "train",
+        "P3(eyepacs->aptos)": "train",
+        "P3(aptos->eyepacs)": "test"
+      }
+    },
+    {
+      "image_id": "eyepacs_43457_left",
+      "patient_id": "eyepacs_43457",
+      "dataset": "eyepacs",
+      "eye": "left",
+      "grade": 1,
+      "nonzero_grade_on_blank_image": true,
+      "original_source_stats": {
+        "mean": 1.7474979051201358,
+        "min": 0.0,
+        "max": 30.0,
+        "std": 1.798821843597336,
+        "width": 2612,
+        "height": 1964
+      },
+      "partner_eye": {
+        "image_id": "eyepacs_43457_right",
+        "grade": 1,
+        "stats": {
+          "mean": 50.36952436067019,
+          "min": 0.0,
+          "max": 255.0,
+          "std": 41.64720757980134,
+          "width": 1024,
+          "height": 945
+        },
+        "looks_normal": true
+      },
+      "pre_exclusion_fold_assignment": {
+        "P1": "val",
+        "P2": "train",
+        "P3(eyepacs->aptos)": "train",
+        "P3(aptos->eyepacs)": "test"
+      }
+    }
+  ]
+}

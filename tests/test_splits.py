@@ -24,6 +24,15 @@ def manifest():
 
 
 @pytest.fixture(scope="module")
+def active_manifest(manifest):
+    """Rows NOT marked excluded — the pool splits.py actually assigns folds
+    over. See apply_exclusions.py."""
+    if "excluded" not in manifest.columns:
+        return manifest
+    return manifest[~manifest["excluded"].fillna(False).astype(bool)]
+
+
+@pytest.fixture(scope="module")
 def p1():
     return json.loads((SPLITS_DIR / "p1.json").read_text())
 
@@ -106,8 +115,8 @@ def test_splits_deterministic(tmp_path):
         assert before[name] == after[name], f"{name} differs between runs — split is not deterministic"
 
 
-def test_all_images_assigned(manifest, p1, p2, p3a, p3b):
-    all_ids = set(manifest["image_id"])
+def test_all_images_assigned(active_manifest, p1, p2, p3a, p3b):
+    all_ids = set(active_manifest["image_id"])
     for name, split_map in [("p1", p1), ("p2", p2), ("p3a", p3a), ("p3b", p3b)]:
         split_ids = set(split_map.keys())
         assert split_ids == all_ids, f"{name}: {len(all_ids - split_ids)} missing, {len(split_ids - all_ids)} extra"
@@ -115,9 +124,9 @@ def test_all_images_assigned(manifest, p1, p2, p3a, p3b):
         assert all(f in ("train", "val", "test") for f in folds)
 
 
-def test_grade_distribution_similar(manifest, p1, p2):
+def test_grade_distribution_similar(active_manifest, p1, p2):
     for name, split_map in [("p1", p1), ("p2", p2)]:
-        df = manifest.copy()
+        df = active_manifest.copy()
         df["fold"] = df["image_id"].map(lambda i: split_map[i]["fold"])
         tab = pd.crosstab(df["fold"], df["grade"], normalize="index")
         max_diff = (tab.max() - tab.min()).max()
@@ -135,3 +144,13 @@ def test_p1_partner_flag_present(p1, manifest):
             )
             n_checked += 1
     assert n_checked > 0, "no eyepacs P1 test images with partner_in_train recorded — suspicious"
+
+
+def test_excluded_rows_appear_in_no_split(manifest, p1, p2, p3a, p3b):
+    if "excluded" not in manifest.columns:
+        pytest.skip("no excluded column yet")
+    excluded_ids = set(manifest.loc[manifest["excluded"].fillna(False).astype(bool), "image_id"])
+    assert excluded_ids, "expected at least one excluded row"
+    for name, split_map in [("p1", p1), ("p2", p2), ("p3a", p3a), ("p3b", p3b)]:
+        overlap = excluded_ids & set(split_map.keys())
+        assert not overlap, f"{name} contains excluded image_ids: {overlap}"
