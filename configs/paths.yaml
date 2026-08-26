@@ -1,0 +1,22 @@
+# Discovered dataset paths for benjaminwarner/resized-2015-2019-blindness-detection-images
+# Root: C:\Users\visha\Premier Pro\EDITING\OneDrive\Desktop\mini
+# Auto-discovered by Part 4 of STEP0_CORRELATION.md — do not hand-edit paths without re-verifying.
+
+root: "C:\\Users\\visha\\Premier Pro\\EDITING\\OneDrive\\Desktop\\mini"
+
+labels:
+  eyepacs_train: "C:\\Users\\visha\\Premier Pro\\EDITING\\OneDrive\\Desktop\\mini\\labels\\trainLabels15.csv"   # 35,126 rows, columns: image, level
+  eyepacs_test:  "C:\\Users\\visha\\Premier Pro\\EDITING\\OneDrive\\Desktop\\mini\\labels\\testLabels15.csv"    # columns: image, level, Usage
+  aptos_train:   "C:\\Users\\visha\\Premier Pro\\EDITING\\OneDrive\\Desktop\\mini\\labels\\trainLabels19.csv"   # columns: id_code, diagnosis
+  aptos_test_ids: "C:\\Users\\visha\\Premier Pro\\EDITING\\OneDrive\\Desktop\\mini\\labels\\testImages19.csv"   # columns: id_code (no labels)
+
+images:
+  eyepacs_train_dir: "C:\\Users\\visha\\Premier Pro\\EDITING\\OneDrive\\Desktop\\mini\\resized train 15"   # 35,126 files, filenames like 10_left.jpg
+  eyepacs_test_dir:  "C:\\Users\\visha\\Premier Pro\\EDITING\\OneDrive\\Desktop\\mini\\resized test 15"
+  aptos_train_dir:   "C:\\Users\\visha\\Premier Pro\\EDITING\\OneDrive\\Desktop\\mini\\resized train 19"
+  aptos_test_dir:    "C:\\Users\\visha\\Premier Pro\\EDITING\\OneDrive\\Desktop\\mini\\resized test 19"
+
+notes:
+  - "EyePACS (trainLabels15.csv) is the only CSV with patient IDs, encoded in the filename as '<patient>_<left|right>'."
+  - "APTOS (trainLabels19.csv) has no patient ID / no left-right pairing — used later only for cross-dataset (P3) evaluation."
+  - "testLabels15.csv has an extra 'Usage' column (Public/Private) inherited from the original Kaggle competition split; not used for the inter-eye analysis."

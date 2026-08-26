@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "csv_rows": 35126,
+    "rows_unparsed": 0,
+    "unique_patients": 17563,
+    "patients_with_both_eyes": 17563,
+    "patients_with_one_eye": 0
+  },
+  "correlation": {
+    "quadratic_weighted_kappa": 0.8545174487486832,
+    "qwk_ci95": [
+      0.8457520569282272,
+      0.8625462441094691
+    ],
+    "linear_weighted_kappa": 0.7909085980539494,
+    "unweighted_kappa": 0.7044581667073369,
+    "spearman_rho": 0.8178703196289946,
+    "spearman_p": 0.0,
+    "exact_agreement": 0.8724591470705461,
+    "agreement_within_1_grade": 0.9570119000170814,
+    "mean_abs_grade_difference": 0.1735466605932927,
+    "diff_distribution": {
+      "0": 15323,
+      "1": 1485,
+      "2": 723,
+      "3": 11,
+      "4": 21
+    },
+    "referable_agreement": 0.9397027842623698,
+    "referable_kappa": 0.8084435341764871
+  },
+  "label_only_baseline": {
+    "lookup_table": {
+      "left_grade_0": 0,
+      "left_grade_1": 1,
+      "left_grade_2": 2,
+      "left_grade_3": 3,
+      "left_grade_4": 4
+    },
+    "test_patients": 5269,
+    "lookup_qwk": 0.837913384185215,
+    "lookup_accuracy": 0.8705636743215032,
+    "lookup_referable_accuracy": 0.9371797304991459,
+    "majority_baseline_qwk": 0.0,
+    "majority_baseline_accuracy": 0.7420762953122034
+  },
+  "contingency_table": {
+    "0": {
+      "0": 12155,
+      "1": 435,
+      "2": 336,
+      "3": 3,
+      "4": 10
+    },
+    "1": {
+      "0": 407,
+      "1": 600,
+      "2": 222,
+      "3": 1,
+      "4": 1
+    },
+    "2": {
+      "0": 295,
+      "1": 171,
+      "2": 1998,
+      "3": 87,
+      "4": 39
+    },
+    "3": {
+      "0": 3,
+      "1": 2,
+      "2": 96,
+      "3": 307,
+      "4": 40
+    },
+    "4": {
+      "0": 11,
+      "1": 4,
+      "2": 50,
+      "3": 27,
+      "4": 263
+    }
+  },
+  "verdict": "STRONG"
+}

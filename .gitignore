@@ -1,0 +1,14 @@
+# large data — not checked into git
+resized train 15/
+resized train 19/
+resized test 15/
+resized test 19/
+data/processed/
+data/manifests/_probe_cache.csv
+data/manifests/_phash_cache.csv
+features/
+app/release/*.pt
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/

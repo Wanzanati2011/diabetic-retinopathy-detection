@@ -1,0 +1,120 @@
+{
+  "threshold_hamming_distance": 5,
+  "hash_size": 16,
+  "n_bands": 6,
+  "total_images": 38788,
+  "candidate_pairs_checked": 6144,
+  "confirmed_duplicate_pairs": 148,
+  "cross_dataset_duplicate_pairs": 0,
+  "n_dup_groups_with_multiple_images": 131,
+  "n_images_involved_in_a_dup_group": 270,
+  "dup_group_size_distribution": {
+    "1": 38518,
+    "2": 124,
+    "3": 6,
+    "4": 1
+  },
+  "selftest_copy_hamming_distance_is_zero": true,
+  "example_pairs": [
+    {
+      "a": "aptos_7d261f986bef",
+      "b": "aptos_91cbe1c775ef",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_0c7e82daf5a0",
+      "b": "aptos_3e86335bc2fd",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_46cdc8b685bd",
+      "b": "aptos_e4151feb8443",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_68332fdcaa70",
+      "b": "aptos_d801c0a66738",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_9b32e8ef0ca0",
+      "b": "aptos_a15652b22ab8",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_3b018e8b7303",
+      "b": "aptos_3ddb86eb530e",
+      "hamming_distance": 2
+    },
+    {
+      "a": "aptos_6c3745a222da",
+      "b": "aptos_eadc57064154",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_42a850acd2ac",
+      "b": "aptos_8cb6b0efaaac",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_12e3f5f2cb17",
+      "b": "aptos_d567a1a22d33",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_38487e1a5b1f",
+      "b": "aptos_b376def52ccc",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_6e92b1c5ac8e",
+      "b": "aptos_9c52b87d01f1",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_026dcd9af143",
+      "b": "aptos_98e8adcf085c",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_00cb6555d108",
+      "b": "aptos_ca25745942b0",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_80d24897669f",
+      "b": "aptos_fea14b3d44b0",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_2df07eb5779f",
+      "b": "aptos_b91ef82e723a",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_16ce555748d8",
+      "b": "aptos_4d9fc85a8259",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_8fc09fecd22f",
+      "b": "aptos_d1cad012a254",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_42a850acd2ac",
+      "b": "aptos_51131b48f9d4",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_b9127e38d9b9",
+      "b": "aptos_e39b627cf648",
+      "hamming_distance": 0
+    },
+    {
+      "a": "aptos_530d78467615",
+      "b": "aptos_c1c8550508e0",
+      "hamming_distance": 0
+    }
+  ]
+}
