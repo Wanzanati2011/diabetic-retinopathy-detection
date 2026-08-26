@@ -6,7 +6,7 @@ resized test 19/
 data/processed/
 data/manifests/_probe_cache.csv
 data/manifests/_phash_cache.csv
-features/
+/features/
 app/release/*.pt
 __pycache__/
 *.pyc
