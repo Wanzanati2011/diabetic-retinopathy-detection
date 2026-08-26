@@ -1,12 +1,93 @@
 {
   "phase": "Phase 2 \u2014 preprocessing cache",
-  "manifest_rows": 20,
-  "already_cached_at_start": 0,
-  "processed_this_run": 20,
+  "manifest_rows": 38788,
+  "already_cached_at_start": 20,
+  "processed_this_run": 38768,
   "errors": 0,
   "error_examples": [],
-  "low_mean_pixel_warnings": [],
-  "n_low_mean_pixel_warnings": 0,
+  "low_mean_pixel_warnings": [
+    {
+      "image_id": "eyepacs_1557_left",
+      "size": 224,
+      "mean_pixel": 4.665331366921769
+    },
+    {
+      "image_id": "eyepacs_1557_left",
+      "size": 384,
+      "mean_pixel": 4.665201822916667
+    },
+    {
+      "image_id": "eyepacs_1986_left",
+      "size": 224,
+      "mean_pixel": 2.1398676658163267
+    },
+    {
+      "image_id": "eyepacs_1986_left",
+      "size": 384,
+      "mean_pixel": 2.134577998408565
+    },
+    {
+      "image_id": "eyepacs_21720_left",
+      "size": 224,
+      "mean_pixel": 4.548256802721088
+    },
+    {
+      "image_id": "eyepacs_21720_left",
+      "size": 384,
+      "mean_pixel": 4.531783492476852
+    },
+    {
+      "image_id": "eyepacs_26064_right",
+      "size": 224,
+      "mean_pixel": 3.637589019982993
+    },
+    {
+      "image_id": "eyepacs_26064_right",
+      "size": 384,
+      "mean_pixel": 3.641029640480324
+    },
+    {
+      "image_id": "eyepacs_32253_right",
+      "size": 224,
+      "mean_pixel": 2.2985956101190474
+    },
+    {
+      "image_id": "eyepacs_32253_right",
+      "size": 384,
+      "mean_pixel": 2.2973994502314814
+    },
+    {
+      "image_id": "eyepacs_34689_left",
+      "size": 224,
+      "mean_pixel": 2.5890997023809526
+    },
+    {
+      "image_id": "eyepacs_34689_left",
+      "size": 384,
+      "mean_pixel": 2.5826619466145835
+    },
+    {
+      "image_id": "eyepacs_42130_left",
+      "size": 224,
+      "mean_pixel": 3.798276732568027
+    },
+    {
+      "image_id": "eyepacs_42130_left",
+      "size": 384,
+      "mean_pixel": 3.813937717013889
+    },
+    {
+      "image_id": "eyepacs_43457_left",
+      "size": 224,
+      "mean_pixel": 2.2867174213435373
+    },
+    {
+      "image_id": "eyepacs_43457_left",
+      "size": 384,
+      "mean_pixel": 2.294094509548611
+    }
+  ],
+  "n_low_mean_pixel_warnings": 16,
   "sizes": [
     224,
     384
@@ -14,13 +95,13 @@
   "quality": 95,
   "ben_graham_ablation": false,
   "per_size_file_counts": {
-    "224": 20,
-    "384": 20
+    "224": 38788,
+    "384": 38788
   },
-  "cache_size_bytes": 836519,
-  "cache_size_gb": 0.0,
-  "median_processing_time_sec_per_image": 0.1261,
-  "mean_processing_time_sec_per_image": 0.1286,
-  "total_run_time_sec": 1.3,
-  "workers": 2
+  "cache_size_bytes": 1694788639,
+  "cache_size_gb": 1.69,
+  "median_processing_time_sec_per_image": 0.1573,
+  "mean_processing_time_sec_per_image": 0.1595,
+  "total_run_time_sec": 526.3,
+  "workers": 12
 }
