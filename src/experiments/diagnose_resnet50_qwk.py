@@ -31,10 +31,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from sklearn.linear_model import LogisticRegression, Ridge
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import cohen_kappa_score, confusion_matrix, recall_score, roc_auc_score
 from sklearn.preprocessing import StandardScaler
-from scipy.optimize import minimize
+
+from src.experiments.claim2_protocols import ordinal_qwk  # single source of truth for this metric
 
 CONFIGS = [("tf_efficientnet_b0", 224), ("tf_efficientnet_b0", 384), ("resnet50", 224)]
 
@@ -84,32 +85,6 @@ def rdr_auroc(X_train, y_train, X_test, y_test):
     clf.fit(Xtr, y_train_bin)
     proba = clf.predict_proba(Xte)[:, 1]
     return float(roc_auc_score(y_test_bin, proba))
-
-
-def ordinal_qwk(X_train, y_train, X_test, y_test):
-    """Ridge regression on the integer grade (treated as continuous), then
-    thresholds optimized on TRAIN ONLY to maximize QWK, applied to test.
-    Standard 'regress-then-round' ordinal trick (e.g. Kaggle APTOS 2019
-    winning solutions) -- tests whether resnet50 features carry ordinal DR
-    signal a discrete multinomial softmax head is throwing away."""
-    scaler = StandardScaler().fit(X_train)
-    Xtr, Xte = scaler.transform(X_train), scaler.transform(X_test)
-    reg = Ridge(alpha=1.0, random_state=42)
-    reg.fit(Xtr, y_train.astype(float))
-    train_score = reg.predict(Xtr)
-    test_score = reg.predict(Xte)
-
-    def neg_qwk(thresholds, y_true, scores):
-        t = np.sort(thresholds)
-        preds = np.clip(np.digitize(scores, t), 0, 4)
-        return -cohen_kappa_score(y_true, preds, weights="quadratic")
-
-    x0 = np.array([0.5, 1.5, 2.5, 3.5])
-    res = minimize(neg_qwk, x0, args=(y_train, train_score), method="Nelder-Mead")
-    thresholds = np.sort(res.x)
-    test_preds = np.clip(np.digitize(test_score, thresholds), 0, 4)
-    qwk = cohen_kappa_score(y_test, test_preds, weights="quadratic")
-    return float(qwk), thresholds.tolist()
 
 
 def main():
@@ -164,7 +139,7 @@ def main():
     X_train, y_train, X_test, y_test, _, _ = get_split_arrays(
         "resnet50", 224, features_dir, active_manifest, p2_split)
     auroc = rdr_auroc(X_train, y_train, X_test, y_test)
-    ord_qwk, thresholds = ordinal_qwk(X_train, y_train, X_test, y_test)
+    ord_qwk, thresholds, _ = ordinal_qwk(X_train, y_train, X_test, y_test, seed=42)
     print(f"  rDR (grade>=2) AUROC:        {auroc:.4f}")
     print(f"  Ordinal QWK (ridge+thresh):  {ord_qwk:.4f}   thresholds={[round(t, 3) for t in thresholds]}")
     print(f"  Multinomial QWK (for ref):   {per_config['resnet50_224']['multinomial_qwk']:.4f}")

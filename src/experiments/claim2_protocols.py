@@ -1,41 +1,59 @@
 """
 Claim 2 -- protocol comparison (MASTER_PLAN.md Part 8.2).
-Trains the same linear head (multinomial logistic regression) on cached,
-frozen features under each split protocol (P1 image-level, P2 patient-level,
-P3 both cross-dataset directions) and compares QWK. This is the core
-"evaluation leaks under image-level splitting" measurement.
+Trains a linear head on cached, frozen features under each split protocol
+(P1 image-level, P2 patient-level, P3 both cross-dataset directions) and
+compares QWK. This is the core "evaluation leaks under image-level
+splitting" measurement.
 
 Standalone, CPU-only (frozen features -> a few seconds per fit). Run locally
 per the project's established pattern.
 
 Methodology, written down for audit:
-  - Head: StandardScaler + multinomial LogisticRegression (lbfgs), fit on the
-    'train' fold only (the 'val' fold is reserved for future hyperparameter
-    search and is unused here -- there are no hyperparameters to tune with a
-    single plain linear head).
+  - Two heads are fit and reported side by side, not just one:
+      * multinomial: StandardScaler + multinomial LogisticRegression (lbfgs)
+      * ordinal: StandardScaler + Ridge regression on the integer grade,
+        with 4 cut thresholds optimized on TRAIN ONLY to maximize QWK
+        (regress-then-round; the same technique used in
+        diagnose_resnet50_qwk.py, promoted here to first-class since QWK is
+        an ordinal metric and a multinomial softmax head throws that
+        structure away). Both heads are fit on the SAME train/test split;
+        this directly tests whether a below-expectation QWK is a head
+        artifact or a genuine features/protocol limitation.
+    Both are fit on the 'train' fold only (the 'val' fold is reserved for
+    future hyperparameter search and unused here).
   - "5 seeds, nearly free" (MASTER_PLAN.md S8.2): a plain lbfgs
-    LogisticRegression is otherwise deterministic given fixed data, so the
-    5 seeds are realized as 5 independent BOOTSTRAP RESAMPLES of the training
-    set (sampling training rows with replacement, per seed) -- this is what
-    actually varies run-to-run and is the standard way to get a seed-style
-    variance estimate when the base fit has no other stochastic component.
-    Reported per protocol as mean +/- std QWK across the 5 bootstrap-trained
-    models, all evaluated on the SAME (unperturbed) test fold.
+    LogisticRegression (and Ridge) is otherwise deterministic given fixed
+    data, so the 5 seeds are realized as 5 independent BOOTSTRAP RESAMPLES
+    of the training set (sampling training rows with replacement, per seed)
+    -- this is what actually varies run-to-run. Reported per protocol as
+    mean +/- std QWK across the 5 bootstrap-trained multinomial models, all
+    evaluated on the SAME (unperturbed) test fold. The ordinal head is fit
+    once, on the unperturbed (seed=42) training set only -- it is a
+    diagnostic/robustness check, not the primary seeded comparison.
+  - The reported bar/point estimate and its 95% CI both come from the SAME
+    unperturbed (seed=42, no train-resampling) reference model, so the
+    error bar is always centered on the plotted point (avoids the
+    mean-of-5-bootstraps vs CI-of-one-model mismatch that crashed an
+    earlier version of this script with a negative-yerr error).
   - Separately, a 95% QWK confidence interval per protocol is computed by
     bootstrap-resampling the TEST PATIENTS (not images -- a patient's two
     eyes must move together or the CI understates variance), applied to the
-    unperturbed (seed=42, no train-resampling) reference model's test
-    predictions.
+    reference model's test predictions.
   - Paired permutation test, P1 vs P2 only (as specified): pairs the 5
-    seed-level QWKs by seed index and does an EXACT sign-flip permutation
-    test over all 2^5=32 sign combinations (exact, not Monte Carlo, since
-    there are only 5 pairs).
+    seed-level multinomial QWKs by seed index and does an EXACT sign-flip
+    permutation test over all 2^5=32 sign combinations (exact, not Monte
+    Carlo, since there are only 5 pairs).
 
 Sanity ranges from MASTER_PLAN.md S8.2 (frozen features, expected to sit
 BELOW fine-tuned numbers -- the gap is the paper's subject, not a bug):
   P1 image-level:    0.80-0.88
   P2 patient-level:  0.70-0.80
   P3 cross-dataset:  0.50-0.65
+A first run landed BELOW all of these for the multinomial head (P1=0.51,
+P2=0.52, P3 e->a=0.64, P3 a->e=0.30) -- flagged `within_expected_range:
+false` rather than silently accepted. The ordinal head is reported
+alongside specifically to check whether this is a head-choice artifact
+before concluding frozen features underperform the plan's expectation.
 
 Writes results/claim2_protocols.json and figures/figure1_claim2_protocols.png.
 
@@ -55,7 +73,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from sklearn.linear_model import LogisticRegression
+from scipy.optimize import minimize
+from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.metrics import cohen_kappa_score
 from sklearn.preprocessing import StandardScaler
 
@@ -89,6 +108,7 @@ def build_xy(ids, feats, row_of, grade_by_id):
 
 
 def fit_and_eval(X_train, y_train, X_test, y_test, seed, bootstrap_train):
+    """Multinomial logistic regression head."""
     rng = np.random.RandomState(seed)
     if bootstrap_train:
         idx = rng.randint(0, len(X_train), size=len(X_train))
@@ -102,6 +122,32 @@ def fit_and_eval(X_train, y_train, X_test, y_test, seed, bootstrap_train):
     y_pred = clf.predict(Xte)
     qwk = float(cohen_kappa_score(y_test, y_pred, weights="quadratic"))
     return qwk, y_pred
+
+
+def ordinal_qwk(X_train, y_train, X_test, y_test, seed=42):
+    """Ridge regression on the integer grade (treated as continuous), then
+    thresholds optimized on TRAIN ONLY to maximize QWK, applied to test.
+    Standard 'regress-then-round' ordinal trick (e.g. Kaggle APTOS 2019
+    winning solutions). Returns (qwk, thresholds, y_pred) so callers can
+    reuse the predicted classes downstream (e.g. claim2b's ablation)."""
+    scaler = StandardScaler().fit(X_train)
+    Xtr, Xte = scaler.transform(X_train), scaler.transform(X_test)
+    reg = Ridge(alpha=1.0, random_state=seed)
+    reg.fit(Xtr, y_train.astype(float))
+    train_score = reg.predict(Xtr)
+    test_score = reg.predict(Xte)
+
+    def neg_qwk(thresholds, y_true, scores):
+        t = np.sort(thresholds)
+        preds = np.clip(np.digitize(scores, t), 0, 4)
+        return -cohen_kappa_score(y_true, preds, weights="quadratic")
+
+    x0 = np.array([0.5, 1.5, 2.5, 3.5])
+    res = minimize(neg_qwk, x0, args=(y_train, train_score), method="Nelder-Mead")
+    thresholds = np.sort(res.x)
+    y_pred = np.clip(np.digitize(test_score, thresholds), 0, 4)
+    qwk = float(cohen_kappa_score(y_test, y_pred, weights="quadratic"))
+    return qwk, thresholds.tolist(), y_pred
 
 
 def patient_bootstrap_ci(patient_ids, y_true, y_pred, n_boot=1000, seed=0):
@@ -180,6 +226,9 @@ def main():
             seed_qwks.append(qwk)
             if not bootstrap:
                 reference_pred = y_pred
+        reference_qwk = seed_qwks[0]
+
+        ord_qwk, ord_thresholds, _ = ordinal_qwk(X_train, y_train, X_test, y_test, seed=SEEDS[0])
 
         patient_ids_test = [patient_by_id[i] for i in test_ids]
         ci_lo, ci_hi = patient_bootstrap_ci(patient_ids_test, y_test, reference_pred,
@@ -191,8 +240,10 @@ def main():
         results[name] = {
             "n_train": len(train_ids), "n_test": len(test_ids),
             "seed_qwks": seed_qwks, "mean_qwk": mean_qwk, "std_qwk": float(np.std(seed_qwks)),
-            "reference_qwk_seed42": seed_qwks[0],
+            "reference_qwk_seed42": reference_qwk,
             "patient_bootstrap_ci95": [ci_lo, ci_hi],
+            "ordinal_qwk": ord_qwk, "ordinal_thresholds": ord_thresholds,
+            "ordinal_beats_multinomial": ord_qwk > reference_qwk,
             "expected_range": [lo_exp, hi_exp],
             "within_expected_range": in_range,
         }
@@ -200,12 +251,14 @@ def main():
 
         flag = "" if in_range else "  <-- OUTSIDE expected range, inspect before trusting"
         print(f"\n--- {name} ---  (train={len(train_ids)}, test={len(test_ids)})")
-        print(f"  seed QWKs: {[round(q,4) for q in seed_qwks]}")
-        print(f"  mean={mean_qwk:.4f}  std={np.std(seed_qwks):.4f}  "
+        print(f"  multinomial seed QWKs: {[round(q,4) for q in seed_qwks]}")
+        print(f"  mean={mean_qwk:.4f}  std={np.std(seed_qwks):.4f}  reference(seed42)={reference_qwk:.4f}  "
               f"95% patient-bootstrap CI [{ci_lo:.4f}, {ci_hi:.4f}]  "
               f"expected [{lo_exp},{hi_exp}]{flag}")
+        print(f"  ordinal QWK (ridge+thresholds, same split): {ord_qwk:.4f}  "
+              f"{'(beats multinomial)' if ord_qwk > reference_qwk else '(does not beat multinomial)'}")
 
-    print("\n--- PAIRED PERMUTATION TEST: P1 vs P2 (exact, over 5 seeds) ---")
+    print("\n--- PAIRED PERMUTATION TEST: P1 vs P2 (exact, over 5 multinomial seeds) ---")
     perm_result = exact_paired_permutation_test(per_protocol_seed_qwks["P1"], per_protocol_seed_qwks["P2"])
     print(f"  mean(P1) - mean(P2) = {perm_result['observed_mean_diff']:.4f}   "
           f"p-value (two-sided, exact) = {perm_result['p_value_two_sided']:.4g}")
@@ -216,23 +269,29 @@ def main():
     import matplotlib.pyplot as plt
 
     names = list(PROTOCOL_FILES.keys())
-    means = [results[n]["mean_qwk"] for n in names]
+    ref_qwks = [results[n]["reference_qwk_seed42"] for n in names]
+    ord_qwks = [results[n]["ordinal_qwk"] for n in names]
     cis = [results[n]["patient_bootstrap_ci95"] for n in names]
-    errs = [[means[i] - cis[i][0] for i in range(len(names))],
-            [cis[i][1] - means[i] for i in range(len(names))]]
+    # error bar length is relative to the SAME reference point the CI was built from,
+    # clipped at 0 in case percentile noise puts the CI edge on the "wrong" side.
+    err_lo = [max(0.0, ref_qwks[i] - cis[i][0]) for i in range(len(names))]
+    err_hi = [max(0.0, cis[i][1] - ref_qwks[i]) for i in range(len(names))]
 
-    fig, ax = plt.subplots(figsize=(8, 5.5))
+    fig, ax = plt.subplots(figsize=(9, 5.5))
     x = np.arange(len(names))
-    bars = ax.bar(x, means, yerr=errs, capsize=4, color=["#1f77b4", "#2ca02c", "#ff7f0e", "#d62728"])
+    width = 0.35
+    ax.bar(x - width / 2, ref_qwks, width, yerr=[err_lo, err_hi], capsize=4, label="multinomial (ref. seed42)")
+    ax.bar(x + width / 2, ord_qwks, width, label="ordinal (ridge+thresholds)")
     for i, n in enumerate(names):
         lo_exp, hi_exp = EXPECTED_RANGES[n]
-        ax.plot([i - 0.4, i + 0.4], [lo_exp, lo_exp], "k--", linewidth=0.8)
-        ax.plot([i - 0.4, i + 0.4], [hi_exp, hi_exp], "k--", linewidth=0.8)
+        ax.plot([i - 0.45, i + 0.45], [lo_exp, lo_exp], "k--", linewidth=0.8)
+        ax.plot([i - 0.45, i + 0.45], [hi_exp, hi_exp], "k--", linewidth=0.8)
     ax.set_xticks(x)
     ax.set_xticklabels(names, rotation=15, ha="right")
-    ax.set_ylabel("QWK (frozen features, mean of 5 bootstrap-trained heads)")
+    ax.set_ylabel("QWK (frozen features)")
     ax.set_title(f"Claim 2 -- protocol comparison, {args.backbone}@{args.size} (Figure 1)\n"
-                 f"error bars: 95% patient-level bootstrap CI; dashed: MASTER_PLAN.md expected range")
+                 f"error bars: 95% patient-level bootstrap CI (multinomial only); dashed: MASTER_PLAN.md expected range")
+    ax.legend(fontsize=8)
     ax.set_ylim(0, 1)
     fig.tight_layout()
     fig_path = root / args.fig
@@ -244,10 +303,11 @@ def main():
     out = {
         "backbone": args.backbone, "size": args.size,
         "seeds": SEEDS,
-        "methodology_note": ("Seeds realized as bootstrap-resampled training sets, not solver "
-                              "randomness (lbfgs is otherwise deterministic). First seed (42) is "
-                              "the unperturbed reference fit used for the patient-bootstrap CI. "
-                              "See module docstring for full methodology."),
+        "methodology_note": ("Multinomial seeds realized as bootstrap-resampled training sets, not "
+                              "solver randomness (lbfgs is otherwise deterministic). First seed (42) "
+                              "is the unperturbed reference fit used for both the plotted point and "
+                              "the patient-bootstrap CI. Ordinal head fit once on the unperturbed "
+                              "training set. See module docstring for full methodology."),
         "protocols": results,
         "p1_vs_p2_paired_permutation_test": perm_result,
     }

@@ -1,0 +1,168 @@
+{
+  "purpose": "Diagnostic for Acceptance Test 7.1 resnet50@224 QWK=0.4701 < 0.5 threshold -- run BEFORE lowering QWK_THRESHOLD, to distinguish a wiring bug from a genuinely weaker frozen ImageNet backbone for this task.",
+  "per_config_p2_sanity": {
+    "tf_efficientnet_b0_224": {
+      "multinomial_qwk": 0.5588693414399228,
+      "n_train": 27123,
+      "n_test": 5814,
+      "confusion_matrix": [
+        [
+          3883,
+          31,
+          153,
+          33,
+          21
+        ],
+        [
+          373,
+          20,
+          42,
+          8,
+          4
+        ],
+        [
+          518,
+          28,
+          286,
+          55,
+          58
+        ],
+        [
+          32,
+          0,
+          80,
+          33,
+          12
+        ],
+        [
+          22,
+          3,
+          40,
+          17,
+          62
+        ]
+      ],
+      "per_class_recall": {
+        "0": 0.942247027420529,
+        "1": 0.0447427293064877,
+        "2": 0.30264550264550266,
+        "3": 0.21019108280254778,
+        "4": 0.4305555555555556
+      }
+    },
+    "tf_efficientnet_b0_384": {
+      "multinomial_qwk": 0.6074751840349513,
+      "n_train": 27123,
+      "n_test": 5814,
+      "confusion_matrix": [
+        [
+          3882,
+          34,
+          157,
+          25,
+          23
+        ],
+        [
+          368,
+          28,
+          43,
+          3,
+          5
+        ],
+        [
+          451,
+          19,
+          372,
+          66,
+          37
+        ],
+        [
+          18,
+          4,
+          72,
+          45,
+          18
+        ],
+        [
+          21,
+          2,
+          38,
+          20,
+          63
+        ]
+      ],
+      "per_class_recall": {
+        "0": 0.9420043678718758,
+        "1": 0.06263982102908278,
+        "2": 0.39365079365079364,
+        "3": 0.28662420382165604,
+        "4": 0.4375
+      }
+    },
+    "resnet50_224": {
+      "multinomial_qwk": 0.47012569732970766,
+      "n_train": 27123,
+      "n_test": 5814,
+      "confusion_matrix": [
+        [
+          3701,
+          72,
+          210,
+          89,
+          49
+        ],
+        [
+          366,
+          35,
+          34,
+          10,
+          2
+        ],
+        [
+          541,
+          38,
+          233,
+          80,
+          53
+        ],
+        [
+          39,
+          5,
+          61,
+          28,
+          24
+        ],
+        [
+          20,
+          8,
+          39,
+          22,
+          55
+        ]
+      ],
+      "per_class_recall": {
+        "0": 0.8980829895656394,
+        "1": 0.07829977628635347,
+        "2": 0.24656084656084656,
+        "3": 0.17834394904458598,
+        "4": 0.3819444444444444
+      }
+    }
+  },
+  "resnet50_rdr_auroc": 0.8027027117248049,
+  "resnet50_ordinal_qwk": 0.565039245237799,
+  "resnet50_ordinal_thresholds": [
+    0.7884774673760285,
+    1.1333841461927672,
+    1.5474584827036053,
+    2.928983089567281
+  ],
+  "id_sets_identical_across_configs": true,
+  "verdict_inputs": {
+    "resnet50_beats_chance": true,
+    "resnet50_ordinal_beats_threshold": true,
+    "resnet50_ordinal_beats_multinomial": true,
+    "rdr_auroc_strong": false,
+    "id_sets_identical_across_configs": true
+  }
+}

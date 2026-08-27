@@ -1,0 +1,89 @@
+{
+  "backbone": "tf_efficientnet_b0",
+  "size": 224,
+  "seed": 42,
+  "n_test_total": 5819,
+  "n_excluded_no_partner_concept": 531,
+  "n_partner_present": 3647,
+  "n_partner_absent": 1641,
+  "raw_qwk_present": 0.4896792669122375,
+  "raw_qwk_absent": 0.4383518365475565,
+  "raw_difference": 0.051327430364681015,
+  "grade_distribution_present": {
+    "0": 0.7351247600767754,
+    "1": 0.06937208664655882,
+    "2": 0.14559912256649302,
+    "3": 0.027145599122566495,
+    "4": 0.02275843158760625
+  },
+  "grade_distribution_absent": {
+    "0": 0.7330895795246801,
+    "1": 0.06825106642291286,
+    "2": 0.15965874466788543,
+    "3": 0.021328458257160267,
+    "4": 0.017672151127361365
+  },
+  "per_grade_accuracy_present": {
+    "0": {
+      "n": 2681,
+      "accuracy": 0.9369638194703469
+    },
+    "1": {
+      "n": 253,
+      "accuracy": 0.02766798418972332
+    },
+    "2": {
+      "n": 531,
+      "accuracy": 0.2674199623352166
+    },
+    "3": {
+      "n": 99,
+      "accuracy": 0.2828282828282828
+    },
+    "4": {
+      "n": 83,
+      "accuracy": 0.42168674698795183
+    }
+  },
+  "per_grade_accuracy_absent": {
+    "0": {
+      "n": 1203,
+      "accuracy": 0.9334995843724023
+    },
+    "1": {
+      "n": 112,
+      "accuracy": 0.0
+    },
+    "2": {
+      "n": 262,
+      "accuracy": 0.2633587786259542
+    },
+    "3": {
+      "n": 35,
+      "accuracy": 0.2571428571428571
+    },
+    "4": {
+      "n": 29,
+      "accuracy": 0.41379310344827586
+    }
+  },
+  "grade_matched_comparison": {
+    "larger_group_subsampled": "present",
+    "shortfall": {},
+    "qwk_present": 0.45615117846085695,
+    "qwk_absent": 0.4383518365475565,
+    "difference": 0.01779934191330046
+  },
+  "bootstrap_ci95_on_difference": [
+    -0.02945169753088221,
+    0.13505634797416619
+  ],
+  "permutation_test": {
+    "observed_diff": 0.051327430364681015,
+    "null_mean": 0.0009856417025813783,
+    "null_std": 0.03838783538294546,
+    "p_value_two_sided": 0.185,
+    "n_permutations": 2000
+  },
+  "interpretation": "No significant difference detected (CI includes 0, or p>=0.05) -- report honestly as a negative/null result on this ablation."
+}
