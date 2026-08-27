@@ -108,7 +108,12 @@ Last updated: 2026-08-27. This file summarizes everything done so far, in plain 
 - **This is a real, confirmed positive result**: averaging both eyes' frozen features together and using the ordinal head beats grading each eye separately and taking the worse one. It's specifically an ordinal-head effect — the plain multinomial head does not show this benefit (consistent with the pattern seen throughout this project: QWK rewards the ordinal structure a softmax head throws away).
 - Along the way, caught and fixed two things before trusting the "usable method found" verdict: (1) the script originally only compared point estimates, which isn't evidence of a real effect on its own — added a proper paired bootstrap CI on the arm-vs-arm difference before calling anything confirmed; (2) a real test bug surfaced by your run (pandas on your machine normalizes a bare `None` mixed with strings in a column to `NaN`, differently from the sandbox's pandas version) — fixed the test to check the actual invariant (`pd.isna`) instead of an implementation detail.
 - 7 unit tests (`tests/test_claim3_both_eyes.py`) plus an end-to-end synthetic-fixture validation in the sandbox, all passing.
-- `results/claim3_both_eyes.json`, `figures/figure4_claim3_both_eyes.png` — committed.
+- **Checked for robustness across all three feature configs, not just one** — reran on EfficientNet-B0 @ 384 and ResNet-50 @ 224:
+  - effnetb0@224: diff +0.075, 95% CI [0.045, 0.105] — significant
+  - effnetb0@384: diff +0.072, 95% CI [0.046, 0.098] — significant
+  - resnet50@224: diff +0.063, 95% CI [0.029, 0.097] — significant
+  - Same effect, same direction, every time. This is a backbone-independent result, not a fluke of one feature space — as solid a positive finding as this project has produced so far.
+- `results/claim3_both_eyes*.json` (3 configs), `results/claim3_robustness.json`, `figures/figure4_claim3_both_eyes*.png` (3 configs), `figures/figure4b_claim3_robustness.png` — all committed.
 
 ## Where things stand right now
 - Phases 1–3 are fully complete, tested, and committed.
