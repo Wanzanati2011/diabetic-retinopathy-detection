@@ -1,0 +1,144 @@
+{
+  "backbone": "tf_efficientnet_b0",
+  "size": 224,
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "methodology_note": "Multinomial seeds realized as bootstrap-resampled training sets, not solver randomness (lbfgs is otherwise deterministic). First seed (42) is the unperturbed reference fit used for both the plotted point and the patient-bootstrap CI. Ordinal head fit once on the unperturbed training set. See module docstring for full methodology.",
+  "protocols": {
+    "P1": {
+      "n_train": 27145,
+      "n_test": 5819,
+      "seed_qwks": [
+        0.5364227190780677,
+        0.5124582596086049,
+        0.5073439692626653,
+        0.5056401845128954,
+        0.5077218799323511
+      ],
+      "mean_qwk": 0.5139174024789168,
+      "std_qwk": 0.011478024518832059,
+      "reference_qwk_seed42": 0.5364227190780677,
+      "patient_bootstrap_ci95": [
+        0.50586336158976,
+        0.5653349624159943
+      ],
+      "ordinal_qwk": 0.5952956125803339,
+      "ordinal_thresholds": [
+        0.6987594536690316,
+        1.0955042908484345,
+        1.6479303385596094,
+        3.9271599674160202
+      ],
+      "ordinal_beats_multinomial": true,
+      "expected_range": [
+        0.8,
+        0.88
+      ],
+      "within_expected_range": false
+    },
+    "P2": {
+      "n_train": 27123,
+      "n_test": 5814,
+      "seed_qwks": [
+        0.5588693414399228,
+        0.5181132564850615,
+        0.5136014436166396,
+        0.5262099503566221,
+        0.5021170449090911
+      ],
+      "mean_qwk": 0.5237822073614675,
+      "std_qwk": 0.019194609308058285,
+      "reference_qwk_seed42": 0.5588693414399228,
+      "patient_bootstrap_ci95": [
+        0.5292199241341461,
+        0.5864439094885332
+      ],
+      "ordinal_qwk": 0.6212058801407718,
+      "ordinal_thresholds": [
+        0.7750036496892043,
+        1.3262665018018294,
+        1.6511131579535225,
+        2.6825346023758545
+      ],
+      "ordinal_beats_multinomial": true,
+      "expected_range": [
+        0.7,
+        0.8
+      ],
+      "within_expected_range": false
+    },
+    "P3_eyepacs_to_aptos": {
+      "n_train": 29851,
+      "n_test": 3662,
+      "seed_qwks": [
+        0.6596272257604252,
+        0.676788693960411,
+        0.6188915742800627,
+        0.6359621182691123,
+        0.595795016262261
+      ],
+      "mean_qwk": 0.6374129257064544,
+      "std_qwk": 0.028709308385477965,
+      "reference_qwk_seed42": 0.6596272257604252,
+      "patient_bootstrap_ci95": [
+        0.6361624525108783,
+        0.6819452962403194
+      ],
+      "ordinal_qwk": 0.7542460491250107,
+      "ordinal_thresholds": [
+        0.6588907165274965,
+        1.1361253971875462,
+        1.537903339570743,
+        4.422146961056024
+      ],
+      "ordinal_beats_multinomial": true,
+      "expected_range": [
+        0.5,
+        0.65
+      ],
+      "within_expected_range": true
+    },
+    "P3_aptos_to_eyepacs": {
+      "n_train": 3111,
+      "n_test": 35118,
+      "seed_qwks": [
+        0.2865135189836232,
+        0.3057140054313292,
+        0.3096824145925797,
+        0.2912539536811014,
+        0.3010001514873478
+      ],
+      "mean_qwk": 0.29883280883519625,
+      "std_qwk": 0.008705930550503335,
+      "reference_qwk_seed42": 0.2865135189836232,
+      "patient_bootstrap_ci95": [
+        0.2676791468477783,
+        0.3047870643580434
+      ],
+      "ordinal_qwk": 0.2862702554554273,
+      "ordinal_thresholds": [
+        0.5671381145499521,
+        1.419464228336502,
+        2.538768868703147,
+        3.084377691350187
+      ],
+      "ordinal_beats_multinomial": false,
+      "expected_range": [
+        0.5,
+        0.65
+      ],
+      "within_expected_range": false
+    }
+  },
+  "p1_vs_p2_paired_permutation_test": {
+    "observed_mean_diff": -0.009864804882550548,
+    "p_value_two_sided": 0.125,
+    "n_seeds": 5,
+    "n_permutations": 32
+  }
+}
