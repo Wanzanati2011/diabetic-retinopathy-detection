@@ -62,6 +62,11 @@ python src\experiments\claim2b_partner_ablation.py --backbone resnet50 --size 22
 python src\experiments\claim3_both_eyes.py
 python -m pytest tests\test_claim3_both_eyes.py -v
 
+# Optional: check the Claim 3 finding (mean-pool + ordinal beats per-eye-then-max)
+# holds across the other two feature configs, not just effnetb0@224.
+python src\experiments\claim3_both_eyes.py --backbone tf_efficientnet_b0 --size 384 --out results\claim3_both_eyes_effnetb0_384.json --fig figures\figure4_claim3_both_eyes_effnetb0_384.png
+python src\experiments\claim3_both_eyes.py --backbone resnet50 --size 224 --out results\claim3_both_eyes_resnet50_224.json --fig figures\figure4_claim3_both_eyes_resnet50_224.png
+
 # ---- Phase 6: fine-tunes (writes here later) ----
 # python src\train\finetune.py --config configs\finetune_headline.yaml
 # python src\train\finetune.py --config configs\finetune_app.yaml
