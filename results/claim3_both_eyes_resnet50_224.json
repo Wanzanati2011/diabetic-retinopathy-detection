@@ -1,0 +1,88 @@
+{
+  "backbone": "resnet50",
+  "size": 224,
+  "scope_note": "EyePACS patients with both eyes active only; APTOS excluded (no eye pairing). P2 split only.",
+  "n_train_patients": 12271,
+  "n_test_patients": 2629,
+  "n_fold_mismatches_dropped": 0,
+  "patient_label_definition": "max(left_grade, right_grade)",
+  "arm_A_per_eye_then_max": {
+    "qwk": 0.3824689603404703,
+    "patient_bootstrap_ci95": [
+      0.33748187166235477,
+      0.42456591547227746
+    ],
+    "referable_sens_spec_near_90pct_sens": {
+      "sensitivity": 1.0,
+      "specificity": 0.0,
+      "threshold": 0.0,
+      "note": "nearest achievable operating point (score is a discrete 0-4 grade, not continuous -- see module docstring)"
+    }
+  },
+  "arm_B_concat_features": {
+    "qwk_multinomial": 0.3242101616002424,
+    "patient_bootstrap_ci95": [
+      0.2768954299477413,
+      0.3647059528110895
+    ],
+    "qwk_ordinal": 0.41226343776854535,
+    "referable_sens_spec_near_90pct_sens": {
+      "sensitivity": 1.0,
+      "specificity": 0.0,
+      "threshold": 0.0,
+      "note": "nearest achievable operating point (score is a discrete 0-4 grade, not continuous -- see module docstring)"
+    }
+  },
+  "arm_C_mean_pooled_features": {
+    "qwk_multinomial": 0.3723789588204278,
+    "patient_bootstrap_ci95": [
+      0.3225148314724832,
+      0.416496646942485
+    ],
+    "qwk_ordinal": 0.44554903166142834,
+    "referable_sens_spec_near_90pct_sens": {
+      "sensitivity": 1.0,
+      "specificity": 0.0,
+      "threshold": 0.0,
+      "note": "nearest achievable operating point (score is a discrete 0-4 grade, not continuous -- see module docstring)"
+    }
+  },
+  "arm_D_label_only_lookup_cited": 0.837913384185215,
+  "arm_vs_a_paired_diff_ci95": {
+    "B_multinomial_minus_A": {
+      "mean_diff": -0.059349500778713565,
+      "ci95": [
+        -0.1073224731369205,
+        -0.016424462446177585
+      ],
+      "significantly_better": false
+    },
+    "B_ordinal_minus_A": {
+      "mean_diff": 0.029980210681456603,
+      "ci95": [
+        -0.010808940051713373,
+        0.06947782196138488
+      ],
+      "significantly_better": false
+    },
+    "C_multinomial_minus_A": {
+      "mean_diff": -0.01128660850474322,
+      "ci95": [
+        -0.05273118816966985,
+        0.03129246497397414
+      ],
+      "significantly_better": false
+    },
+    "C_ordinal_minus_A": {
+      "mean_diff": 0.06317950360070577,
+      "ci95": [
+        0.029493231356689666,
+        0.09732262816010454
+      ],
+      "significantly_better": true
+    }
+  },
+  "b_or_c_beats_a_point_estimate": true,
+  "b_or_c_beats_a_significant": true,
+  "interpretation": "Usable both-eyes method found: B or C beats per-eye-then-max, and the paired bootstrap CI on the difference excludes 0."
+}

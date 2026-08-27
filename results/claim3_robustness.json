@@ -1,0 +1,42 @@
+{
+  "rows": [
+    {
+      "backbone": "tf_efficientnet_b0",
+      "size": 224,
+      "arm_A_qwk": 0.49446925606169245,
+      "arm_C_ordinal_qwk": 0.5692770926865582,
+      "diff": 0.07501917171396955,
+      "diff_ci95": [
+        0.045364342617175875,
+        0.10467107824208437
+      ],
+      "significant": true
+    },
+    {
+      "backbone": "tf_efficientnet_b0",
+      "size": 384,
+      "arm_A_qwk": 0.5433208219925634,
+      "arm_C_ordinal_qwk": 0.6171522303718815,
+      "diff": 0.07246460041233325,
+      "diff_ci95": [
+        0.04569980682693876,
+        0.09833423086945545
+      ],
+      "significant": true
+    },
+    {
+      "backbone": "resnet50",
+      "size": 224,
+      "arm_A_qwk": 0.3824689603404703,
+      "arm_C_ordinal_qwk": 0.44554903166142834,
+      "diff": 0.06317950360070577,
+      "diff_ci95": [
+        0.029493231356689666,
+        0.09732262816010454
+      ],
+      "significant": true
+    }
+  ],
+  "all_significant": true,
+  "honest_finding": "Mean-pooling both eyes' frozen features and using the ordinal head beats grading each eye separately then taking the worse one, and this holds across all 3 tested feature configs: tf_efficientnet_b0@224 diff=+0.075 CI [0.045, 0.105]; tf_efficientnet_b0@384 diff=+0.072 CI [0.046, 0.098]; resnet50@224 diff=+0.063 CI [0.029, 0.097]. This is a robust, backbone-independent effect, not an artifact of one feature space."
+}
