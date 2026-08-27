@@ -338,7 +338,11 @@ def main():
     total_optimizer_steps = optimizer_steps_per_epoch * cfg["epochs"]
     warmup_steps = max(1, int(total_optimizer_steps * cfg.get("warmup_pct", 0.05)))
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda_factory(total_optimizer_steps, warmup_steps))
-    scaler = torch.cuda.amp.GradScaler(enabled=(cfg.get("amp", "fp16") == "fp16" and device.type == "cuda"))
+    amp_enabled = (cfg.get("amp", "fp16") == "fp16" and device.type == "cuda")
+    try:
+        scaler = torch.amp.GradScaler("cuda", enabled=amp_enabled)  # torch>=2.3 non-deprecated API
+    except TypeError:
+        scaler = torch.cuda.amp.GradScaler(enabled=amp_enabled)     # older torch fallback
     criterion = nn.CrossEntropyLoss()
 
     ckpt_dir = root / args.checkpoints_dir / run_name
@@ -506,12 +510,20 @@ def main():
         "referable_dr_auroc": rdr_auroc,
         "acceptance_test_10_1_verdict": verdict,
     }
+    is_debug_run = bool(args.limit_train or args.limit_val or args.limit_test or args.epochs)
+    out["is_debug_run"] = is_debug_run
     out_name = args.out or f"results/{run_name}.json"
     out_path = root / out_name
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(out, indent=2))
     print(f"\nWrote {out_path}")
-    print(f"ACCEPTANCE TEST 10.1 VERDICT: test_qwk={test_qwk:.4f} -> {verdict}")
+    if is_debug_run:
+        print(f"DEBUG RUN (--limit-*/--epochs override was used) -- test_qwk={test_qwk:.4f} is NOT "
+              f"meaningful and the Acceptance Test 10.1 verdict table does not apply here. This run "
+              f"only checks that the pipeline executes end-to-end without crashing (data loading, "
+              f"model, AMP, EMA, checkpointing, JSON output) -- it does not check quality.")
+    else:
+        print(f"ACCEPTANCE TEST 10.1 VERDICT: test_qwk={test_qwk:.4f} -> {verdict}")
     if out["split"] == "p1" and test_qwk > 0.95:
         print("Reminder (MASTER_PLAN.md Part 10): P1 is SUPPOSED to look inflated relative to P2 "
               "-- that's expected. Never 'improve' P1's split to bring it down.")
