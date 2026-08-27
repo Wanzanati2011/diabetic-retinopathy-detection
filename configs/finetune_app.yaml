@@ -1,0 +1,24 @@
+# MASTER_PLAN.md Part 10, Run 2 (the app model) + Part 4.3 fine-tune config.
+# effnetb0 @384, best config -- P2 split ONLY, single run (~2 hours on an RTX 4050).
+model: tf_efficientnet_b0
+image_size: 384
+batch_size: 8               # 8 at 384, per MASTER_PLAN.md Part 4.3 (VRAM guide also allows 16 -- being conservative)
+grad_accum_steps: 4         # effective batch size 32, matching the headline config
+epochs: 15
+amp: fp16
+optimizer: adamw            # documentation only -- finetune.py always uses AdamW
+lr_head: 3.0e-4
+lr_backbone: 3.0e-5
+scheduler: cosine           # documentation only -- finetune.py always uses warmup+cosine
+warmup_pct: 0.05
+ema_decay: 0.999
+freeze_backbone_epochs: 2
+sampler: class_balanced     # documentation only -- finetune.py always applies this
+early_stop_metric: val_qwk  # documentation only -- finetune.py always uses val_qwk
+early_stop_patience: 4
+num_workers: 6
+pin_memory: true
+persistent_workers: true
+augment: true                # not in MASTER_PLAN.md's spec -- see finetune.py docstring
+grad_checkpointing: false    # OOM escalation option (MASTER_PLAN.md 4.3) -- flip to true if needed;
+                              # at 384px with bs=8 this is the first thing to try if you hit OOM

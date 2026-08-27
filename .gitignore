@@ -14,3 +14,6 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
+
+# fine-tuned model weights -- large (.pt), never checked into git
+checkpoints/

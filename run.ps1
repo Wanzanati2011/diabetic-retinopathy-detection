@@ -67,6 +67,26 @@ python -m pytest tests\test_claim3_both_eyes.py -v
 python src\experiments\claim3_both_eyes.py --backbone tf_efficientnet_b0 --size 384 --out results\claim3_both_eyes_effnetb0_384.json --fig figures\figure4_claim3_both_eyes_effnetb0_384.png
 python src\experiments\claim3_both_eyes.py --backbone resnet50 --size 224 --out results\claim3_both_eyes_resnet50_224.json --fig figures\figure4_claim3_both_eyes_resnet50_224.png
 
-# ---- Phase 6: fine-tunes (writes here later) ----
-# python src\train\finetune.py --config configs\finetune_headline.yaml
-# python src\train\finetune.py --config configs\finetune_app.yaml
+# ---- Phase 6: real fine-tunes (MASTER_PLAN.md Part 10) ----
+# One-time (if not already installed):
+#   pip install pyyaml
+#
+# STEP 1 -- cheap smoke test first (well under a minute, confirms the whole
+# pipeline runs before you commit real GPU time). Do this before Run 1.
+python src\train\finetune.py --config configs\finetune_headline.yaml --split p2 --seed 42 --epochs 1 --limit-train 200 --limit-val 64 --limit-test 64
+#
+# STEP 2 -- Run 1 (headline): effnetb0@224, P1 and P2, 2 seeds each = 4 runs,
+# ~40 min each. Each is independently resumable (Ctrl+C-safe, rerun the same
+# command to pick up where it left off).
+python src\train\finetune.py --config configs\finetune_headline.yaml --split p1 --seed 42
+python src\train\finetune.py --config configs\finetune_headline.yaml --split p1 --seed 43
+python src\train\finetune.py --config configs\finetune_headline.yaml --split p2 --seed 42
+python src\train\finetune.py --config configs\finetune_headline.yaml --split p2 --seed 43
+#
+# STEP 3 -- Run 2 (the app model): effnetb0@384, P2 only, ~2 hours.
+python src\train\finetune.py --config configs\finetune_app.yaml --split p2 --seed 42
+#
+# After Run 1 finishes: rerun the Claim 2b partner ablation on the
+# fine-tuned P1 model (checkpoints\finetune_headline_p1_seed42\best.pt) --
+# this is the version that goes in the paper (MASTER_PLAN.md Part 10).
+# Script for this comes next, once Run 1's checkpoint actually exists.
