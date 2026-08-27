@@ -97,12 +97,18 @@ Last updated: 2026-08-27. This file summarizes everything done so far, in plain 
 - Two candidate framings to weigh later: (a) report this as a genuine, informative negative result — "leakage does not manifest under frozen-feature evaluation, which may explain why prior work using frozen/linear-probe evaluation missed this effect" — or (b) hold off on any claim about leakage until Phase 6 (fine-tuning), where a model can actually memorize image-specific detail and a leakage effect (if real) would be expected to show up.
 - This is the MASTER_PLAN.md §8.4 checkpoint ("🛑 Report all Phase 4 results to the user before continuing — this is where the paper's contribution is either confirmed or not"). Nothing downstream depends on this decision yet, so it's safe to leave parked.
 
-## Phase 5 — Claim 3, the both-eyes model (code ready, not yet run for real)
+## Phase 5 — Claim 3, the both-eyes model (done — real, confirmed positive result)
 - Built `src/experiments/claim3_both_eyes.py` per MASTER_PLAN.md Part 9: compares four ways to get a PATIENT-level grade from frozen features — (A) grade each eye separately then take the worse one (the standard clinical approach), (B) glue both eyes' feature vectors together and train on that, (C) average both eyes' feature vectors and train on that, (D) the label-only lookup shortcut, cited for reference only. Patient label is defined as the worse of the two eyes, per the plan.
 - Scope: EyePACS patients with both eyes only (APTOS has no eye-pairing info), evaluated under the honest P2 split.
-- 7 unit tests added (`tests/test_claim3_both_eyes.py`) covering the pairing/fold-assignment logic with synthetic data — all pass.
-- Fully validated end-to-end against a synthetic 80-patient fixture in the sandbox (not just unit tests) — the whole script runs, produces a valid results file and figure, before handing the real run to your machine (it needs several real model fits, too heavy for the sandbox).
-- **Not yet run for real** — added to `run.ps1`, ready whenever you want to run Phase 5.
+- Real run (EfficientNet-B0 @ 224, 2,629 test patients):
+  - Arm A (per-eye, then max): QWK 0.494
+  - Arm B (concat features): multinomial 0.414 (significantly *worse* than A), ordinal 0.483 (no significant difference)
+  - Arm C (mean-pooled features): multinomial 0.457 (significantly *worse* than A), **ordinal 0.569 — significantly *better* than A** (+0.075, 95% CI [0.045, 0.105], confirmed by a paired bootstrap check, not just a raw comparison)
+  - Arm D (label-only lookup, cited for reference): 0.838
+- **This is a real, confirmed positive result**: averaging both eyes' frozen features together and using the ordinal head beats grading each eye separately and taking the worse one. It's specifically an ordinal-head effect — the plain multinomial head does not show this benefit (consistent with the pattern seen throughout this project: QWK rewards the ordinal structure a softmax head throws away).
+- Along the way, caught and fixed two things before trusting the "usable method found" verdict: (1) the script originally only compared point estimates, which isn't evidence of a real effect on its own — added a proper paired bootstrap CI on the arm-vs-arm difference before calling anything confirmed; (2) a real test bug surfaced by your run (pandas on your machine normalizes a bare `None` mixed with strings in a column to `NaN`, differently from the sandbox's pandas version) — fixed the test to check the actual invariant (`pd.isna`) instead of an implementation detail.
+- 7 unit tests (`tests/test_claim3_both_eyes.py`) plus an end-to-end synthetic-fixture validation in the sandbox, all passing.
+- `results/claim3_both_eyes.json`, `figures/figure4_claim3_both_eyes.png` — committed.
 
 ## Where things stand right now
 - Phases 1–3 are fully complete, tested, and committed.
