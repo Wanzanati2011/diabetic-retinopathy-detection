@@ -84,7 +84,13 @@ def test_assign_p2_fold_catches_a_real_mismatch():
     out, mismatches = assign_p2_fold(pairs, split_map)
     assert mismatches == 1
     row = out[out["patient_id"] == "eyepacs_1"].iloc[0]
-    assert row["fold"] is None
+    # pandas normalizes a bare None to NaN in some versions/paths when a column
+    # mixes None with strings (observed: sandbox pandas 2.3.3 keeps None, the
+    # real machine's pandas turned it into float NaN for the same code) -- the
+    # actual invariant we care about is "this row is marked missing/dropped",
+    # which pd.isna() checks correctly regardless of which sentinel pandas
+    # chose to store. `is None` was over-specified to an implementation detail.
+    assert pd.isna(row["fold"])
 
 
 def test_referable_sens_spec_perfect_predictor():

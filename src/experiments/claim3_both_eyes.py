@@ -131,6 +131,35 @@ def referable_sens_spec_at_90_sens(y_true, y_score):
     }
 
 
+def paired_bootstrap_ci_diff(patient_ids, y_true, pred_a, pred_b, n_boot=1000, seed=42):
+    """95% CI on QWK(pred_b) - QWK(pred_a), resampling PATIENTS (with
+    replacement) and recomputing BOTH QWKs on the same resampled set each
+    time -- this is the paired analogue of patient_bootstrap_ci(), needed
+    because Arm A/B/C predictions are evaluated on the exact same test
+    patients and we care about whether one beats another, not each arm's
+    absolute QWK in isolation. A point estimate alone ("B's QWK is higher")
+    is not evidence of a real effect -- this is what actually backs a
+    'usable method found' claim, per this project's standing rule to verify
+    any interesting-looking result before trusting it."""
+    df = pd.DataFrame({"patient_id": patient_ids, "y_true": y_true, "pred_a": pred_a, "pred_b": pred_b})
+    groups = df.groupby("patient_id").indices
+    patients = np.array(list(groups.keys()))
+    rng = np.random.RandomState(seed)
+    y_true_arr = df["y_true"].to_numpy()
+    pred_a_arr = df["pred_a"].to_numpy()
+    pred_b_arr = df["pred_b"].to_numpy()
+    diffs = np.empty(n_boot)
+    for b in range(n_boot):
+        sampled = rng.choice(patients, size=len(patients), replace=True)
+        idx = np.concatenate([groups[p] for p in sampled])
+        qwk_a = cohen_kappa_score(y_true_arr[idx], pred_a_arr[idx], weights="quadratic")
+        qwk_b = cohen_kappa_score(y_true_arr[idx], pred_b_arr[idx], weights="quadratic")
+        diffs[b] = qwk_b - qwk_a
+    lo, hi = np.percentile(diffs, [2.5, 97.5])
+    return {"mean_diff": float(np.mean(diffs)), "ci95": [float(lo), float(hi)],
+            "significantly_better": bool(lo > 0)}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--project-root", default=str(PROJECT_ROOT))
@@ -231,6 +260,13 @@ def main():
     rss_B = referable_sens_spec_at_90_sens(y_test_patient, pred_B)
     rss_C = referable_sens_spec_at_90_sens(y_test_patient, pred_C)
 
+    # Paired bootstrap CIs on the arm-vs-A differences -- this is what
+    # actually decides "usable method found", not the raw point estimates.
+    diff_B_mult = paired_bootstrap_ci_diff(patient_ids_test, y_test_patient, pred_A, pred_B, n_boot=args.n_bootstrap_ci, seed=43)
+    diff_B_ord = paired_bootstrap_ci_diff(patient_ids_test, y_test_patient, pred_A, ord_pred_B, n_boot=args.n_bootstrap_ci, seed=43)
+    diff_C_mult = paired_bootstrap_ci_diff(patient_ids_test, y_test_patient, pred_A, pred_C, n_boot=args.n_bootstrap_ci, seed=43)
+    diff_C_ord = paired_bootstrap_ci_diff(patient_ids_test, y_test_patient, pred_A, ord_pred_C, n_boot=args.n_bootstrap_ci, seed=43)
+
     print("=" * 72)
     print(f"CLAIM 3 -- BOTH-EYES MODEL  ({args.backbone}@{args.size}, P2 only, EyePACS n_test={n_test})")
     print("=" * 72)
@@ -240,12 +276,27 @@ def main():
     if lookup_qwk is not None:
         print(f"  Arm D (label-only lookup, cited): QWK={lookup_qwk:.4f}")
 
-    beats = (qwk_B > qwk_A) or (qwk_C > qwk_A) or (ord_qwk_B > qwk_A) or (ord_qwk_C > qwk_A)
     print()
-    print("USABLE METHOD FOUND (B or C beats A)." if beats else
-          "NEGATIVE RESULT: neither B nor C beats A under frozen features -- report honestly, "
-          "per MASTER_PLAN.md Part 9 ('a negative result on Claim 3 doesn't hurt a paper whose "
-          "headline is Claims 1 and 2').")
+    print("--- ARM vs A: paired patient-bootstrap 95% CI on the difference (this decides significance, not the point estimate) ---")
+    print(f"  B multinomial - A: diff={diff_B_mult['mean_diff']:+.4f}  CI {diff_B_mult['ci95']}  significant={diff_B_mult['significantly_better']}")
+    print(f"  B ordinal     - A: diff={diff_B_ord['mean_diff']:+.4f}  CI {diff_B_ord['ci95']}  significant={diff_B_ord['significantly_better']}")
+    print(f"  C multinomial - A: diff={diff_C_mult['mean_diff']:+.4f}  CI {diff_C_mult['ci95']}  significant={diff_C_mult['significantly_better']}")
+    print(f"  C ordinal     - A: diff={diff_C_ord['mean_diff']:+.4f}  CI {diff_C_ord['ci95']}  significant={diff_C_ord['significantly_better']}")
+
+    beats_point_estimate = (qwk_B > qwk_A) or (qwk_C > qwk_A) or (ord_qwk_B > qwk_A) or (ord_qwk_C > qwk_A)
+    beats_significant = any([diff_B_mult["significantly_better"], diff_B_ord["significantly_better"],
+                              diff_C_mult["significantly_better"], diff_C_ord["significantly_better"]])
+    print()
+    if beats_significant:
+        print("USABLE METHOD FOUND (B or C beats A, and the CI on the difference excludes 0).")
+    elif beats_point_estimate:
+        print("NOT YET CONFIRMED: B or C has a higher point-estimate QWK than A, but the paired "
+              "bootstrap CI on the difference includes 0 -- could be noise. Report as inconclusive, "
+              "not as a confirmed win, until this is checked (e.g. on the other feature configs).")
+    else:
+        print("NEGATIVE RESULT: neither B nor C beats A under frozen features -- report honestly, "
+              "per MASTER_PLAN.md Part 9 ('a negative result on Claim 3 doesn't hurt a paper whose "
+              "headline is Claims 1 and 2').")
 
     # ---- Figure 4 ----
     import matplotlib
@@ -304,10 +355,22 @@ def main():
             "referable_sens_spec_near_90pct_sens": rss_C,
         },
         "arm_D_label_only_lookup_cited": lookup_qwk,
-        "b_or_c_beats_a": bool(beats),
-        "interpretation": ("Usable both-eyes method found: B or C beats per-eye-then-max." if beats else
-                            "Negative result: concatenation/pooling does not beat per-eye-then-max under "
-                            "frozen features. Report honestly -- does not undermine Claims 1/1b/2."),
+        "arm_vs_a_paired_diff_ci95": {
+            "B_multinomial_minus_A": diff_B_mult,
+            "B_ordinal_minus_A": diff_B_ord,
+            "C_multinomial_minus_A": diff_C_mult,
+            "C_ordinal_minus_A": diff_C_ord,
+        },
+        "b_or_c_beats_a_point_estimate": bool(beats_point_estimate),
+        "b_or_c_beats_a_significant": bool(beats_significant),
+        "interpretation": (
+            "Usable both-eyes method found: B or C beats per-eye-then-max, and the paired "
+            "bootstrap CI on the difference excludes 0." if beats_significant else
+            "Inconclusive: B or C has a higher point-estimate QWK than A, but the paired bootstrap "
+            "CI on the difference includes 0 -- do not report as a confirmed win yet." if beats_point_estimate else
+            "Negative result: concatenation/pooling does not beat per-eye-then-max under frozen "
+            "features. Report honestly -- does not undermine Claims 1/1b/2."
+        ),
     }
     out_path = root / args.out
     out_path.parent.mkdir(parents=True, exist_ok=True)
