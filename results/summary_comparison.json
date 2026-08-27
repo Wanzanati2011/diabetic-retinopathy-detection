@@ -1,0 +1,61 @@
+{
+  "backbone": "tf_efficientnet_b0",
+  "size": 224,
+  "bars": [
+    {
+      "label": "Label-only lookup\n(no pixels)",
+      "qwk": 0.837913384185215,
+      "ci": null,
+      "group": "baseline"
+    },
+    {
+      "label": "P1 image-level\n(multinomial)",
+      "qwk": 0.5364227190780677,
+      "ci": [
+        0.50586336158976,
+        0.5653349624159943
+      ],
+      "group": "P1"
+    },
+    {
+      "label": "P1 image-level\n(ordinal)",
+      "qwk": 0.5952956125803339,
+      "ci": null,
+      "group": "P1"
+    },
+    {
+      "label": "P2 patient-level\n(multinomial)",
+      "qwk": 0.5588693414399228,
+      "ci": [
+        0.5292199241341461,
+        0.5864439094885332
+      ],
+      "group": "P2"
+    },
+    {
+      "label": "P2 patient-level\n(ordinal)",
+      "qwk": 0.6212058801407718,
+      "ci": null,
+      "group": "P2"
+    },
+    {
+      "label": "Partner present\n(multinomial)",
+      "qwk": 0.4896792669122375,
+      "ci": null,
+      "group": "ablation"
+    },
+    {
+      "label": "Partner absent\n(multinomial)",
+      "qwk": 0.4383518365475565,
+      "ci": null,
+      "group": "ablation"
+    }
+  ],
+  "p1_vs_p2_diff": -0.02244662236185513,
+  "p1_vs_p2_p_value": 0.125,
+  "ablation_diff_multinomial": 0.051327430364681015,
+  "ablation_diff_ordinal": 0.06116308166217033,
+  "ablation_p_value_multinomial": 0.185,
+  "ablation_p_value_ordinal": 0.0505,
+  "honest_finding": "Label-only lookup reaches QWK=0.838 using zero pixels -- a strong shortcut ceiling. Under frozen features, P1 (leaky split, QWK=0.536) does NOT outperform P2 (honest split, QWK=0.559); the difference is -0.022 and not significant (paired permutation p=0.125). The partner-eye ablation on P1 test images shows a +0.051 QWK gap (present vs absent, multinomial) that is also not significant (p=0.185; ordinal gap +0.061, p=0.0505). Together: with frozen (non-fine-tuned) features, patient-level leakage does not measurably inflate scores. This does not rule out leakage under fine-tuning (Phase 6), where a model can memorize image-specific detail -- that open question is left for later phases, not answered by this figure."
+}
