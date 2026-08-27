@@ -323,10 +323,22 @@ def main():
     ax.set_xticklabels(labels, fontsize=8)
     ax.set_ylabel("Patient-level QWK")
     ax.set_ylim(0, 1)
+    sig_flags = [False, diff_B_mult["significantly_better"], diff_B_ord["significantly_better"],
+                 diff_C_mult["significantly_better"], diff_C_ord["significantly_better"]]
+    if lookup_qwk is not None:
+        sig_flags.append(False)
+    any_sig = any(sig_flags)
+    subtitle = ("error bars: 95% patient-bootstrap CI (multinomial arms only). "
+                 "* = significantly beats Arm A (paired bootstrap CI on the diff excludes 0)"
+                 if any_sig else
+                 "error bars: 95% patient-bootstrap CI (multinomial arms only). "
+                 "No arm significantly beats Arm A (see paired-diff CIs in the JSON)")
     ax.set_title(f"Figure 4 -- Claim 3, both-eyes model, {args.backbone}@{args.size} (P2, EyePACS only)\n"
-                 f"error bars: 95% patient-bootstrap CI (multinomial arms only)")
-    for i, h in enumerate(heights):
-        ax.text(i, h + 0.02, f"{h:.3f}", ha="center", fontsize=8)
+                 f"{subtitle}", fontsize=10)
+    for i, (h, sig) in enumerate(zip(heights, sig_flags)):
+        label = f"{h:.3f}" + (" *" if sig else "")
+        ax.text(i, h + 0.02, label, ha="center", fontsize=8,
+                fontweight="bold" if sig else "normal")
     fig.tight_layout()
     fig_path = root / args.fig
     fig_path.parent.mkdir(parents=True, exist_ok=True)
