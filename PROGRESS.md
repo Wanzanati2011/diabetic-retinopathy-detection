@@ -84,7 +84,20 @@ Last updated: 2026-08-27. This file summarizes everything done so far, in plain 
 - Fixed a crash in the Claim 2 figure (mismatched bar height vs. error bar source).
 - ResNet-50 sanity-test threshold was investigated with real evidence (not just lowered blindly) before being adjusted.
 
+## Part 8.4 — three-way comparison figure (done)
+- Built `src/experiments/summary_comparison.py`: one figure putting side by side (a) the label-only lookup shortcut, (b) the P1 model, (c) the P2 model, (d) partner-present vs partner-absent. Pulls every number from the already-written result JSONs — computes nothing new.
+- Ran for real (EfficientNet-B0 @ 224): label-only lookup QWK 0.838, P1 multinomial 0.536 / ordinal 0.595, P2 multinomial 0.559 / ordinal 0.621, partner-present 0.490, partner-absent 0.438.
+- `results/summary_comparison.json`, `figures/figure1_summary_comparison.png` — committed.
+- Added `run.ps1` commands to rerun Claim 2 / Claim 2b for the other two feature configs (EfficientNet-B0 @ 384, ResNet-50 @ 224), writing to separate result/figure files so they don't overwrite the EfficientNet-B0 @ 224 run. Not yet run — up to you whether/when to run these.
+
+## Open decision — parked for later (per your instruction 2026-08-27)
+**Not resolved yet, revisit when ready:** how to frame Claims 2 and 2b in the paper, given that the honest result is a genuine negative finding under frozen-feature evaluation:
+- P1 (leaky split) does not outperform P2 (honest split) on frozen features — 0.536 vs 0.559, difference not significant (p=0.125). If anything P1 is a touch lower.
+- The partner-eye ablation found no statistically significant leakage effect either (multinomial p=0.185, ordinal p=0.05 — borderline but not under the 0.05 cutoff).
+- Two candidate framings to weigh later: (a) report this as a genuine, informative negative result — "leakage does not manifest under frozen-feature evaluation, which may explain why prior work using frozen/linear-probe evaluation missed this effect" — or (b) hold off on any claim about leakage until Phase 6 (fine-tuning), where a model can actually memorize image-specific detail and a leakage effect (if real) would be expected to show up.
+- This is the MASTER_PLAN.md §8.4 checkpoint ("🛑 Report all Phase 4 results to the user before continuing — this is where the paper's contribution is either confirmed or not"). Nothing downstream depends on this decision yet, so it's safe to leave parked.
+
 ## Where things stand right now
 - Phases 1–3 are fully complete, tested, and committed.
-- Phase 4's three claims (1b, 2, 2b) have all been run for real on the EfficientNet-B0 @ 224 features and results are committed to git.
-- This is a checkpoint moment per the project plan: Claims 2 and 2b did not come out the way the plan originally expected (no clear leakage signal from frozen features) — this needs your sign-off on how to frame it before continuing. See "Next Steps" for the specific decision points.
+- Phase 4's three claims (1b, 2, 2b) plus the Part 8.4 summary figure have all been run for real on the EfficientNet-B0 @ 224 features and results are committed to git.
+- The leakage-framing decision above is intentionally parked, not blocking further work. Next up: Phase 5 (Claim 3, both-eyes model) — see "Next Steps".

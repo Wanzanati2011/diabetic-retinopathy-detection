@@ -38,6 +38,22 @@ python src\experiments\claim1b_stratified.py
 python src\experiments\claim2_protocols.py --backbone tf_efficientnet_b0 --size 224
 python src\experiments\claim2b_partner_ablation.py --backbone tf_efficientnet_b0 --size 224
 
+# Part 8.4: three-way comparison figure (label-only lookup vs P1 vs P2 vs partner
+# ablation). Pure aggregation over the JSONs above -- no GPU/heavy compute, just
+# reads results/*.json and plots. Rerun any time those change.
+python src\experiments\summary_comparison.py
+
+# Optional: rerun Claim 2 / 2b for the other two feature configs, to check
+# whether the "no leakage under frozen features" finding holds across
+# backbones. Distinct --out/--fig so these don't overwrite the effnetb0@224
+# results above.
+python src\experiments\claim2_protocols.py --backbone tf_efficientnet_b0 --size 384 --out results\claim2_protocols_effnetb0_384.json --fig figures\figure1_claim2_protocols_effnetb0_384.png
+python src\experiments\claim2b_partner_ablation.py --backbone tf_efficientnet_b0 --size 384 --out results\claim2b_partner_ablation_effnetb0_384.json --fig figures\figure3_claim2b_partner_ablation_effnetb0_384.png
+python src\experiments\claim2_protocols.py --backbone resnet50 --size 224 --out results\claim2_protocols_resnet50_224.json --fig figures\figure1_claim2_protocols_resnet50_224.png
+python src\experiments\claim2b_partner_ablation.py --backbone resnet50 --size 224 --out results\claim2b_partner_ablation_resnet50_224.json --fig figures\figure3_claim2b_partner_ablation_resnet50_224.png
+# Then, to compare: rerun the summary figure pointing at each config's files, e.g.
+# python src\experiments\summary_comparison.py --backbone tf_efficientnet_b0 --size 384 --claim2-json results\claim2_protocols_effnetb0_384.json --claim2b-json results\claim2b_partner_ablation_effnetb0_384.json --out results\summary_comparison_effnetb0_384.json --fig figures\figure1_summary_comparison_effnetb0_384.png
+
 # ---- Phase 5: Claim 3 both-eyes model (writes here later) ----
 # python src\experiments\claim3_both_eyes.py
 
