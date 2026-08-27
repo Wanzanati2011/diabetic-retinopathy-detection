@@ -54,8 +54,13 @@ python src\experiments\claim2b_partner_ablation.py --backbone resnet50 --size 22
 # Then, to compare: rerun the summary figure pointing at each config's files, e.g.
 # python src\experiments\summary_comparison.py --backbone tf_efficientnet_b0 --size 384 --claim2-json results\claim2_protocols_effnetb0_384.json --claim2b-json results\claim2b_partner_ablation_effnetb0_384.json --out results\summary_comparison_effnetb0_384.json --fig figures\figure1_summary_comparison_effnetb0_384.png
 
-# ---- Phase 5: Claim 3 both-eyes model (writes here later) ----
-# python src\experiments\claim3_both_eyes.py
+# ---- Phase 5: Claim 3 both-eyes model (MASTER_PLAN.md Part 9) ----
+# Heavy CPU (several LogisticRegression/Ridge fits) -- run on your machine,
+# not in a sandbox. Needs a P2 split + a features/*.npz + results/inter_eye_correlation.json
+# (all already present). Compares per-eye-then-max vs concatenated vs mean-pooled
+# both-eye features for predicting the PATIENT-level grade (= max of the two eyes).
+python src\experiments\claim3_both_eyes.py
+python -m pytest tests\test_claim3_both_eyes.py -v
 
 # ---- Phase 6: fine-tunes (writes here later) ----
 # python src\train\finetune.py --config configs\finetune_headline.yaml
