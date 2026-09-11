@@ -1,0 +1,118 @@
+{
+  "split": "data/splits/p1.json",
+  "n_boot": 2000,
+  "runs": {
+    "class_balanced_seed42": {
+      "sampler": "class_balanced",
+      "seed": 42,
+      "n_partner_present": 3647,
+      "n_partner_absent": 1641,
+      "raw_qwk_present": 0.6161402137491367,
+      "raw_qwk_absent": 0.5392034889345099,
+      "raw_difference": 0.07693672481462688,
+      "bootstrap_ci95_on_difference": [
+        0.008204181778578656,
+        0.14645798191332354
+      ],
+      "excludes_zero": true,
+      "permutation_test": {
+        "observed_diff": 0.07693672481462688,
+        "null_mean": 0.00048515169894529527,
+        "null_std": 0.03522182940504403,
+        "p_value_two_sided": 0.026,
+        "n_permutations": 2000
+      },
+      "grade_matched": {
+        "qwk_present": 0.5908195281057915,
+        "qwk_absent": 0.5392034889345099,
+        "difference": 0.05161603917128166,
+        "shortfall": {}
+      }
+    },
+    "class_balanced_seed43": {
+      "sampler": "class_balanced",
+      "seed": 43,
+      "n_partner_present": 3647,
+      "n_partner_absent": 1641,
+      "raw_qwk_present": 0.6110457802817302,
+      "raw_qwk_absent": 0.5484946279520838,
+      "raw_difference": 0.06255115232964636,
+      "bootstrap_ci95_on_difference": [
+        -0.005124144666266417,
+        0.13204288311658843
+      ],
+      "excludes_zero": false,
+      "permutation_test": {
+        "observed_diff": 0.06255115232964636,
+        "null_mean": 0.0017657220557410441,
+        "null_std": 0.03586206562082563,
+        "p_value_two_sided": 0.0745,
+        "n_permutations": 2000
+      },
+      "grade_matched": {
+        "qwk_present": 0.5956911540933464,
+        "qwk_absent": 0.5484946279520838,
+        "difference": 0.047196526141262574,
+        "shortfall": {}
+      }
+    },
+    "none_seed42": {
+      "sampler": "none",
+      "seed": 42,
+      "n_partner_present": 3647,
+      "n_partner_absent": 1641,
+      "raw_qwk_present": 0.6434973879479462,
+      "raw_qwk_absent": 0.5782647172273274,
+      "raw_difference": 0.06523267072061878,
+      "bootstrap_ci95_on_difference": [
+        -0.0008523705746870579,
+        0.13694865647544802
+      ],
+      "excludes_zero": false,
+      "permutation_test": {
+        "observed_diff": 0.06523267072061878,
+        "null_mean": 0.001052153102361089,
+        "null_std": 0.03497664236900618,
+        "p_value_two_sided": 0.06,
+        "n_permutations": 2000
+      },
+      "grade_matched": {
+        "qwk_present": 0.6022040455749709,
+        "qwk_absent": 0.5782647172273274,
+        "difference": 0.02393932834764345,
+        "shortfall": {}
+      }
+    },
+    "none_seed43": {
+      "sampler": "none",
+      "seed": 43,
+      "n_partner_present": 3647,
+      "n_partner_absent": 1641,
+      "raw_qwk_present": 0.663024221936254,
+      "raw_qwk_absent": 0.5561376038195159,
+      "raw_difference": 0.10688661811673805,
+      "bootstrap_ci95_on_difference": [
+        0.04517687989759941,
+        0.17434831991990762
+      ],
+      "excludes_zero": true,
+      "permutation_test": {
+        "observed_diff": 0.10688661811673805,
+        "null_mean": 0.0006540674955938232,
+        "null_std": 0.03302744231199114,
+        "p_value_two_sided": 0.0005,
+        "n_permutations": 2000
+      },
+      "grade_matched": {
+        "qwk_present": 0.6639172140080465,
+        "qwk_absent": 0.5561376038195159,
+        "difference": 0.10777961018853055,
+        "shortfall": {}
+      }
+    }
+  },
+  "mean_raw_difference": 0.07790179149540752,
+  "n_conditions_excluding_zero": 2,
+  "verdict": "mixed",
+  "verdict_text": "Mean gap +0.0779 QWK; the CI excludes zero in 2 of 4 converged conditions. Suggestive but not consistent -- report as condition-dependent."
+}

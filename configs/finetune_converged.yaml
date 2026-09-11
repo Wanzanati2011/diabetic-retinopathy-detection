@@ -1,0 +1,28 @@
+# Phase 6b -- properly converged re-test of Claim 2's null (MASTER_PLAN.md
+# Part 10 follow-up). Same effnetb0@224 architecture as finetune_headline.yaml;
+# the changes are exactly the ones specified for Phase 6b:
+#   epochs 15 -> 40, early_stop_patience 4 -> 8, lr_backbone 3e-5 -> 1e-4.
+# scheduler is still cosine over the FULL run automatically -- finetune_converged.py
+# computes total_steps from cfg["epochs"], so raising epochs to 40 already spans
+# the cosine decay over all 40 epochs; nothing else needs to change for that.
+model: tf_efficientnet_b0
+image_size: 224
+batch_size: 32
+grad_accum_steps: 1
+epochs: 40
+amp: fp16
+optimizer: adamw          # documentation only -- finetune_converged.py always uses AdamW
+lr_head: 3.0e-4
+lr_backbone: 1.0e-4        # CHANGED from 3e-5 -- the backbone was barely moving at the old LR
+scheduler: cosine          # documentation only -- always warmup+cosine, now spanning 40 epochs
+warmup_pct: 0.05
+ema_decay: 0.999
+freeze_backbone_epochs: 2
+sampler: class_balanced    # default if --sampler is not passed on the command line
+early_stop_metric: val_qwk # documentation only -- always val_qwk
+early_stop_patience: 8     # CHANGED from 4 -- give convergence more room before stopping
+num_workers: 6
+pin_memory: true
+persistent_workers: true
+augment: true
+grad_checkpointing: false  # OOM escalation option -- flip to true if 40-epoch runs OOM

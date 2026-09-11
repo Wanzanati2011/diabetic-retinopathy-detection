@@ -1,0 +1,72 @@
+{
+  "rows": [
+    {
+      "split": "p1",
+      "seed": 42,
+      "test_qwk": 0.5493731898753853,
+      "best_val_qwk": 0.5704568728290702,
+      "best_epoch": 12,
+      "total_epochs_run": 15,
+      "referable_dr_auroc": 0.8445779504048461,
+      "verdict": "undertrained or preprocessing bug"
+    },
+    {
+      "split": "p1",
+      "seed": 43,
+      "test_qwk": 0.5609720706372736,
+      "best_val_qwk": 0.5564539326351429,
+      "best_epoch": 14,
+      "total_epochs_run": 15,
+      "referable_dr_auroc": 0.8512757117874674,
+      "verdict": "undertrained or preprocessing bug"
+    },
+    {
+      "split": "p2",
+      "seed": 42,
+      "test_qwk": 0.5612023823454142,
+      "best_val_qwk": 0.576678545164297,
+      "best_epoch": 12,
+      "total_epochs_run": 15,
+      "referable_dr_auroc": 0.8465357972130785,
+      "verdict": "undertrained or preprocessing bug"
+    },
+    {
+      "split": "p2",
+      "seed": 43,
+      "test_qwk": 0.5482672108991977,
+      "best_val_qwk": 0.5727704200855027,
+      "best_epoch": 14,
+      "total_epochs_run": 15,
+      "referable_dr_auroc": 0.8353690654226625,
+      "verdict": "undertrained or preprocessing bug"
+    }
+  ],
+  "by_split": {
+    "p1": {
+      "mean_qwk": 0.5551726302563295,
+      "std_qwk": 0.008201647240905411,
+      "n_seeds": 2,
+      "values": [
+        0.5493731898753853,
+        0.5609720706372736
+      ]
+    },
+    "p2": {
+      "mean_qwk": 0.554734796622306,
+      "std_qwk": 0.00914654744543027,
+      "n_seeds": 2,
+      "values": [
+        0.5612023823454142,
+        0.5482672108991977
+      ]
+    }
+  },
+  "overall": {
+    "mean_qwk": 0.5549537134393177,
+    "std_qwk": 0.007097371483557383,
+    "n_runs": 4
+  },
+  "all_below_target": true,
+  "p1_inflated_as_expected": false,
+  "honest_finding": "Headline fine-tune (effnetb0@224, fast config, 2 splits x 2 seeds): test QWK = 0.5550 +/- 0.0071 across 4 runs (p1 mean=0.5552, p2 mean=0.5547). All 4 runs fall in the 0.40-0.70 'undertrained or preprocessing bug' acceptance-test band -- none reached the 0.70 'correct -- proceed' bar. NOTE: P1 vs P2 gap is only +0.0004 (n=2 seeds/split) -- essentially indistinguishable, NOT the clear inflation MASTER_PLAN.md Part 10 predicts for P1. Do not report this as 'P1 inflated as expected' with this little data; either run more seeds or treat the two splits as equivalent here."
+}

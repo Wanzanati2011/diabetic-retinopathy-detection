@@ -1,0 +1,395 @@
+{
+  "n_boot": 2000,
+  "scopes": {
+    "all_images": {
+      "class_balanced": {
+        "per_seed": [
+          {
+            "qwk_a": 0.6526378876920772,
+            "qwk_b": 0.6375906629171058,
+            "observed_diff": 0.015047224774971446,
+            "ci95": [
+              -0.04104800906697482,
+              0.0726727550829582
+            ],
+            "excludes_zero": false,
+            "minimum_detectable_effect": 0.056860382074966506,
+            "n_images": 963,
+            "n_patients": 898,
+            "seed": 42
+          },
+          {
+            "qwk_a": 0.6503526309508249,
+            "qwk_b": 0.6245951781216266,
+            "observed_diff": 0.02575745282919828,
+            "ci95": [
+              -0.03782361483890611,
+              0.08599851811750149
+            ],
+            "excludes_zero": false,
+            "minimum_detectable_effect": 0.0619110664782038,
+            "n_images": 963,
+            "n_patients": 898,
+            "seed": 43
+          }
+        ],
+        "mean_diff_across_seeds": 0.020402338802084863,
+        "both_seeds_exclude_zero": false,
+        "any_seed_excludes_zero": false
+      },
+      "none": {
+        "per_seed": [
+          {
+            "qwk_a": 0.6547631739903822,
+            "qwk_b": 0.6481468794957868,
+            "observed_diff": 0.006616294494595443,
+            "ci95": [
+              -0.04748473964246937,
+              0.05895720686296683
+            ],
+            "excludes_zero": false,
+            "minimum_detectable_effect": 0.0532209732527181,
+            "n_images": 963,
+            "n_patients": 898,
+            "seed": 42
+          },
+          {
+            "qwk_a": 0.686556559948408,
+            "qwk_b": 0.6771280822785539,
+            "observed_diff": 0.009428477669854107,
+            "ci95": [
+              -0.04108284301347881,
+              0.056169818786111915
+            ],
+            "excludes_zero": false,
+            "minimum_detectable_effect": 0.04862633089979536,
+            "n_images": 963,
+            "n_patients": 898,
+            "seed": 43
+          }
+        ],
+        "mean_diff_across_seeds": 0.008022386082224775,
+        "both_seeds_exclude_zero": false,
+        "any_seed_excludes_zero": false
+      },
+      "sign_flip_over_4_conditions": {
+        "observed_mean_diff": 0.014212362442154819,
+        "p_value_two_sided": 0.125,
+        "n_pairs": 4,
+        "n_permutations": 16
+      }
+    },
+    "eyepacs_only": {
+      "class_balanced": {
+        "per_seed": [
+          {
+            "qwk_a": 0.5880179171332587,
+            "qwk_b": 0.5703884875718104,
+            "observed_diff": 0.017629429561448307,
+            "ci95": [
+              -0.046782574437493805,
+              0.08466390754575889
+            ],
+            "excludes_zero": false,
+            "minimum_detectable_effect": 0.06572324099162635,
+            "n_images": 780,
+            "n_patients": 715,
+            "seed": 42
+          },
+          {
+            "qwk_a": 0.5938677331478583,
+            "qwk_b": 0.5574785100286533,
+            "observed_diff": 0.036389223119205005,
+            "ci95": [
+              -0.03916939630936221,
+              0.10828985956563875
+            ],
+            "excludes_zero": false,
+            "minimum_detectable_effect": 0.07372962793750049,
+            "n_images": 780,
+            "n_patients": 715,
+            "seed": 43
+          }
+        ],
+        "mean_diff_across_seeds": 0.027009326340326656,
+        "both_seeds_exclude_zero": false,
+        "any_seed_excludes_zero": false
+      },
+      "none": {
+        "per_seed": [
+          {
+            "qwk_a": 0.5928346101847679,
+            "qwk_b": 0.5843787940105221,
+            "observed_diff": 0.008455816174245845,
+            "ci95": [
+              -0.055306287703518656,
+              0.07486515307001208
+            ],
+            "excludes_zero": false,
+            "minimum_detectable_effect": 0.06508572038676537,
+            "n_images": 780,
+            "n_patients": 715,
+            "seed": 42
+          },
+          {
+            "qwk_a": 0.6274596751843025,
+            "qwk_b": 0.6221152152210934,
+            "observed_diff": 0.005344459963209092,
+            "ci95": [
+              -0.05167468699882831,
+              0.06604849034687667
+            ],
+            "excludes_zero": false,
+            "minimum_detectable_effect": 0.05886158867285249,
+            "n_images": 780,
+            "n_patients": 715,
+            "seed": 43
+          }
+        ],
+        "mean_diff_across_seeds": 0.006900138068727468,
+        "both_seeds_exclude_zero": false,
+        "any_seed_excludes_zero": false
+      },
+      "sign_flip_over_4_conditions": {
+        "observed_mean_diff": 0.016954732204527062,
+        "p_value_two_sided": 0.125,
+        "n_pairs": 4,
+        "n_permutations": 16
+      }
+    }
+  },
+  "per_run_unpaired": {
+    "p1_class_balanced_seed42": {
+      "qwk_full_test": 0.6509379848045225,
+      "patient_bootstrap_ci95": [
+        0.6246982205094038,
+        0.6750649123560465
+      ],
+      "n_test": 5819
+    },
+    "p1_class_balanced_seed43": {
+      "qwk_full_test": 0.6460820832184435,
+      "patient_bootstrap_ci95": [
+        0.6206437189374725,
+        0.6705824465561203
+      ],
+      "n_test": 5819
+    },
+    "p1_none_seed42": {
+      "qwk_full_test": 0.674914955582636,
+      "patient_bootstrap_ci95": [
+        0.649730068640972,
+        0.6987531532920942
+      ],
+      "n_test": 5819
+    },
+    "p1_none_seed43": {
+      "qwk_full_test": 0.6807508804852167,
+      "patient_bootstrap_ci95": [
+        0.6580237424171724,
+        0.7044876501870075
+      ],
+      "n_test": 5819
+    },
+    "p2_class_balanced_seed42": {
+      "qwk_full_test": 0.6301896726528358,
+      "patient_bootstrap_ci95": [
+        0.60075298774841,
+        0.657923484479216
+      ],
+      "n_test": 5814
+    },
+    "p2_class_balanced_seed43": {
+      "qwk_full_test": 0.6162569213483586,
+      "patient_bootstrap_ci95": [
+        0.5871264340386784,
+        0.6437293814511628
+      ],
+      "n_test": 5814
+    },
+    "p2_none_seed42": {
+      "qwk_full_test": 0.6709096466484998,
+      "patient_bootstrap_ci95": [
+        0.6404176502455209,
+        0.696452136915156
+      ],
+      "n_test": 5814
+    },
+    "p2_none_seed43": {
+      "qwk_full_test": 0.6672438138500704,
+      "patient_bootstrap_ci95": [
+        0.6410047225224921,
+        0.6926277452070294
+      ],
+      "n_test": 5814
+    }
+  },
+  "unpaired_full": {
+    "all_images": {
+      "class_balanced": {
+        "per_seed": [
+          {
+            "qwk_p1": 0.6509379848045225,
+            "qwk_p2": 0.6301896726528358,
+            "observed_diff": 0.02074831215168671,
+            "ci95": [
+              -0.01722510024105151,
+              0.05714113924329765
+            ],
+            "excludes_zero": false,
+            "minimum_detectable_effect": 0.03718311974217458,
+            "n_images_p1": 5819,
+            "n_images_p2": 5814,
+            "n_patients_p1": 5406,
+            "n_patients_p2": 3185,
+            "seed": 42
+          },
+          {
+            "qwk_p1": 0.6460820832184435,
+            "qwk_p2": 0.6162569213483586,
+            "observed_diff": 0.029825161870084882,
+            "ci95": [
+              -0.009570527467934891,
+              0.06765206856514971
+            ],
+            "excludes_zero": false,
+            "minimum_detectable_effect": 0.038611298016542304,
+            "n_images_p1": 5819,
+            "n_images_p2": 5814,
+            "n_patients_p1": 5406,
+            "n_patients_p2": 3185,
+            "seed": 43
+          }
+        ],
+        "mean_diff_across_seeds": 0.025286737010885796,
+        "both_seeds_exclude_zero": false,
+        "any_seed_excludes_zero": false
+      },
+      "none": {
+        "per_seed": [
+          {
+            "qwk_p1": 0.674914955582636,
+            "qwk_p2": 0.6709096466484998,
+            "observed_diff": 0.004005308934136198,
+            "ci95": [
+              -0.03131242629486099,
+              0.03787788370780432
+            ],
+            "excludes_zero": false,
+            "minimum_detectable_effect": 0.03459515500133266,
+            "n_images_p1": 5819,
+            "n_images_p2": 5814,
+            "n_patients_p1": 5406,
+            "n_patients_p2": 3185,
+            "seed": 42
+          },
+          {
+            "qwk_p1": 0.6807508804852167,
+            "qwk_p2": 0.6672438138500704,
+            "observed_diff": 0.013507066635146336,
+            "ci95": [
+              -0.021384191355220163,
+              0.04864680118061271
+            ],
+            "excludes_zero": false,
+            "minimum_detectable_effect": 0.03501549626791643,
+            "n_images_p1": 5819,
+            "n_images_p2": 5814,
+            "n_patients_p1": 5406,
+            "n_patients_p2": 3185,
+            "seed": 43
+          }
+        ],
+        "mean_diff_across_seeds": 0.008756187784641267,
+        "both_seeds_exclude_zero": false,
+        "any_seed_excludes_zero": false
+      }
+    },
+    "eyepacs_only": {
+      "class_balanced": {
+        "per_seed": [
+          {
+            "qwk_p1": 0.5941968125289292,
+            "qwk_p2": 0.5681147103821496,
+            "observed_diff": 0.02608210214677964,
+            "ci95": [
+              -0.01763997678584467,
+              0.07382071336124917
+            ],
+            "excludes_zero": false,
+            "minimum_detectable_effect": 0.04573034507354692,
+            "n_images_p1": 5288,
+            "n_images_p2": 5258,
+            "n_patients_p1": 4875,
+            "n_patients_p2": 2629,
+            "seed": 42
+          },
+          {
+            "qwk_p1": 0.5927112107376745,
+            "qwk_p2": 0.5534939858908912,
+            "observed_diff": 0.03921722484678336,
+            "ci95": [
+              -0.007265786884449945,
+              0.08466722429656537
+            ],
+            "excludes_zero": false,
+            "minimum_detectable_effect": 0.045966505590507654,
+            "n_images_p1": 5288,
+            "n_images_p2": 5258,
+            "n_patients_p1": 4875,
+            "n_patients_p2": 2629,
+            "seed": 43
+          }
+        ],
+        "mean_diff_across_seeds": 0.0326496634967815,
+        "both_seeds_exclude_zero": false,
+        "any_seed_excludes_zero": false
+      },
+      "none": {
+        "per_seed": [
+          {
+            "qwk_p1": 0.6248717718312558,
+            "qwk_p2": 0.6141104158859101,
+            "observed_diff": 0.010761355945345663,
+            "ci95": [
+              -0.03314955075320071,
+              0.05531502826186699
+            ],
+            "excludes_zero": false,
+            "minimum_detectable_effect": 0.04423228950753385,
+            "n_images_p1": 5288,
+            "n_images_p2": 5258,
+            "n_patients_p1": 4875,
+            "n_patients_p2": 2629,
+            "seed": 42
+          },
+          {
+            "qwk_p1": 0.6319323428044279,
+            "qwk_p2": 0.6137064073302354,
+            "observed_diff": 0.01822593547419249,
+            "ci95": [
+              -0.026872345976329724,
+              0.06277239833022001
+            ],
+            "excludes_zero": false,
+            "minimum_detectable_effect": 0.044822372153274864,
+            "n_images_p1": 5288,
+            "n_images_p2": 5258,
+            "n_patients_p1": 4875,
+            "n_patients_p2": 2629,
+            "seed": 43
+          }
+        ],
+        "mean_diff_across_seeds": 0.014493645709769076,
+        "both_seeds_exclude_zero": false,
+        "any_seed_excludes_zero": false
+      }
+    }
+  },
+  "minimum_detectable_effect_unpaired": 0.04518787808121582,
+  "minimum_detectable_effect_paired": 0.06585004449718618,
+  "verdict": "null_holds_under_convergence",
+  "verdict_text": "P1 minus P2 is +0.0236 QWK and the patient-level CI includes zero in every condition (EyePACS-only, full test sets). The null reported in Section 3.3 survives full model convergence, so the provisional caveat in Section 3.5 can be discharged -- but report the power alongside it: this test resolves effects down to about 0.045 QWK, which rules out an inflation the size of Tampu et al.'s upper range (0.43) comfortably and their lower range (0.07) only marginally. A null without a minimum detectable effect is not interpretable.",
+  "primary_scope": "eyepacs_only",
+  "mean_diff_eyepacs_only": 0.02357165460327529
+}

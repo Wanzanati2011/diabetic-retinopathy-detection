@@ -1,0 +1,207 @@
+{
+  "backbone": "tf_efficientnet_b0",
+  "size": 224,
+  "protocol": "p2.json",
+  "merge_map": {
+    "0": 0,
+    "1": 0,
+    "2": 1,
+    "3": 2,
+    "4": 3
+  },
+  "n_train": 27123,
+  "n_test": 5814,
+  "n_test_patients": 3185,
+  "heads": {
+    "multinomial": {
+      "qwk_5class_native": 0.5588693414399228,
+      "qwk_5class_mapped_to_merged": 0.5637160777842264,
+      "qwk_merged_native": 0.5518617986499237,
+      "merged_minus_mapped": -0.011854279134302703,
+      "paired_ci95_on_difference": [
+        -0.0227355762977715,
+        -0.0016497894958763413
+      ],
+      "excludes_zero": true,
+      "grade1_recall_5class": 0.0447427293064877,
+      "n_grade1_test": 447,
+      "referable_5class": {
+        "sensitivity": 0.5160513643659711,
+        "specificity": 0.9428633975481612,
+        "tp": 643,
+        "fn": 603,
+        "tn": 4307,
+        "fp": 261
+      },
+      "referable_merged": {
+        "sensitivity": 0.485553772070626,
+        "specificity": 0.9503064798598949,
+        "tp": 605,
+        "fn": 641,
+        "tn": 4341,
+        "fp": 227
+      },
+      "referable_sens_delta": -0.0304975922953451,
+      "referable_spec_delta": 0.00744308231173374,
+      "confusion_5class": [
+        [
+          3883,
+          31,
+          153,
+          33,
+          21
+        ],
+        [
+          373,
+          20,
+          42,
+          8,
+          4
+        ],
+        [
+          518,
+          28,
+          286,
+          55,
+          58
+        ],
+        [
+          32,
+          0,
+          80,
+          33,
+          12
+        ],
+        [
+          22,
+          3,
+          40,
+          17,
+          62
+        ]
+      ],
+      "confusion_merged": [
+        [
+          4341,
+          163,
+          38,
+          26
+        ],
+        [
+          571,
+          267,
+          53,
+          54
+        ],
+        [
+          43,
+          73,
+          30,
+          11
+        ],
+        [
+          27,
+          38,
+          18,
+          61
+        ]
+      ]
+    },
+    "ordinal": {
+      "qwk_5class_native": 0.6212058801407718,
+      "qwk_5class_mapped_to_merged": 0.6078244938660977,
+      "qwk_merged_native": 0.6399178981716015,
+      "merged_minus_mapped": 0.03209340430550378,
+      "paired_ci95_on_difference": [
+        0.016867516002735023,
+        0.04646198511350443
+      ],
+      "excludes_zero": true,
+      "grade1_recall_5class": 0.17002237136465326,
+      "n_grade1_test": 447,
+      "referable_5class": {
+        "sensitivity": 0.4301765650080257,
+        "specificity": 0.9693520140105079,
+        "tp": 536,
+        "fn": 710,
+        "tn": 4428,
+        "fp": 140
+      },
+      "referable_merged": {
+        "sensitivity": 0.5232744783306581,
+        "specificity": 0.9378283712784589,
+        "tp": 652,
+        "fn": 594,
+        "tn": 4284,
+        "fp": 284
+      },
+      "referable_sens_delta": 0.0930979133226324,
+      "referable_spec_delta": -0.031523642732048995,
+      "confusion_5class": [
+        [
+          3568,
+          444,
+          73,
+          31,
+          5
+        ],
+        [
+          340,
+          76,
+          14,
+          14,
+          3
+        ],
+        [
+          375,
+          258,
+          92,
+          184,
+          36
+        ],
+        [
+          16,
+          39,
+          20,
+          53,
+          29
+        ],
+        [
+          6,
+          16,
+          11,
+          68,
+          43
+        ]
+      ],
+      "confusion_merged": [
+        [
+          4284,
+          243,
+          32,
+          9
+        ],
+        [
+          552,
+          206,
+          151,
+          36
+        ],
+        [
+          30,
+          49,
+          49,
+          29
+        ],
+        [
+          12,
+          21,
+          55,
+          56
+        ]
+      ]
+    }
+  },
+  "verdict": "merge_helps_but_referable_moved",
+  "verdict_text": "Merging improves QWK by +0.0321, but referable-DR performance also shifted (+0.093 sens / -0.032 spec), so part of the gain is a change in operating point rather than pure noise removal. Report the QWK gain WITH the referable caveat attached."
+}

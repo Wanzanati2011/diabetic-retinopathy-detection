@@ -1,0 +1,219 @@
+{
+  "backbone": "tf_efficientnet_b0",
+  "size": 224,
+  "n_train_patients": 12271,
+  "n_test_patients": 2629,
+  "n_fold_mismatches_dropped": 0,
+  "patient_label_definition": "max(left_grade, right_grade) -- ground truth definition unchanged; only prediction-aggregation is varied here",
+  "cells": {
+    "per_eye_max_multinomial": {
+      "label": "per_eye_max_multinomial",
+      "qwk": 0.49446925606169245,
+      "patient_bootstrap_ci95": [
+        0.4501380696659157,
+        0.5368889594893624
+      ],
+      "referable_sens_spec_near_90pct_sens": {
+        "sensitivity": 1.0,
+        "specificity": 0.0,
+        "threshold": 0.0,
+        "note": "nearest achievable operating point (score is a discrete 0-4 grade, not continuous -- see module docstring)"
+      }
+    },
+    "per_eye_max_ordinal": {
+      "label": "per_eye_max_ordinal",
+      "qwk": 0.5446502688881945,
+      "patient_bootstrap_ci95": [
+        0.5013442655880117,
+        0.581513779716446
+      ],
+      "referable_sens_spec_near_90pct_sens": {
+        "sensitivity": 1.0,
+        "specificity": 0.0,
+        "threshold": 0.0,
+        "note": "nearest achievable operating point (score is a discrete 0-4 grade, not continuous -- see module docstring)"
+      }
+    },
+    "per_eye_mean_multinomial": {
+      "label": "per_eye_mean_multinomial",
+      "qwk": 0.5057744205029737,
+      "patient_bootstrap_ci95": [
+        0.462365486715816,
+        0.5459394318675668
+      ],
+      "referable_sens_spec_near_90pct_sens": {
+        "sensitivity": 1.0,
+        "specificity": 0.0,
+        "threshold": 0.0,
+        "note": "nearest achievable operating point (score is a discrete 0-4 grade, not continuous -- see module docstring)"
+      }
+    },
+    "per_eye_mean_ordinal": {
+      "label": "per_eye_mean_ordinal",
+      "qwk": 0.5490376207614577,
+      "patient_bootstrap_ci95": [
+        0.509116279362252,
+        0.5857644756604667
+      ],
+      "referable_sens_spec_near_90pct_sens": {
+        "sensitivity": 1.0,
+        "specificity": 0.0,
+        "threshold": 0.0,
+        "note": "nearest achievable operating point (score is a discrete 0-4 grade, not continuous -- see module docstring)"
+      }
+    },
+    "per_eye_min_multinomial": {
+      "label": "per_eye_min_multinomial",
+      "qwk": 0.37379152124799886,
+      "patient_bootstrap_ci95": [
+        0.32680033483375953,
+        0.4184908734742036
+      ],
+      "referable_sens_spec_near_90pct_sens": {
+        "sensitivity": 1.0,
+        "specificity": 0.0,
+        "threshold": 0.0,
+        "note": "nearest achievable operating point (score is a discrete 0-4 grade, not continuous -- see module docstring)"
+      }
+    },
+    "per_eye_min_ordinal": {
+      "label": "per_eye_min_ordinal",
+      "qwk": 0.4305713938924155,
+      "patient_bootstrap_ci95": [
+        0.3842483355353059,
+        0.47760689975811094
+      ],
+      "referable_sens_spec_near_90pct_sens": {
+        "sensitivity": 1.0,
+        "specificity": 0.0,
+        "threshold": 0.0,
+        "note": "nearest achievable operating point (score is a discrete 0-4 grade, not continuous -- see module docstring)"
+      }
+    },
+    "concat_multinomial": {
+      "label": "concat_multinomial",
+      "qwk": 0.4140278011840238,
+      "patient_bootstrap_ci95": [
+        0.36641905081490905,
+        0.4550835338074316
+      ],
+      "referable_sens_spec_near_90pct_sens": {
+        "sensitivity": 1.0,
+        "specificity": 0.0,
+        "threshold": 0.0,
+        "note": "nearest achievable operating point (score is a discrete 0-4 grade, not continuous -- see module docstring)"
+      }
+    },
+    "concat_ordinal": {
+      "label": "concat_ordinal",
+      "qwk": 0.4833042146884269,
+      "patient_bootstrap_ci95": [
+        0.43984830470368036,
+        0.5218477429864732
+      ],
+      "referable_sens_spec_near_90pct_sens": {
+        "sensitivity": 1.0,
+        "specificity": 0.0,
+        "threshold": 0.0,
+        "note": "nearest achievable operating point (score is a discrete 0-4 grade, not continuous -- see module docstring)"
+      }
+    },
+    "pool_multinomial": {
+      "label": "pool_multinomial",
+      "qwk": 0.4564811349064444,
+      "patient_bootstrap_ci95": [
+        0.40968443466903587,
+        0.49770751331174123
+      ],
+      "referable_sens_spec_near_90pct_sens": {
+        "sensitivity": 1.0,
+        "specificity": 0.0,
+        "threshold": 0.0,
+        "note": "nearest achievable operating point (score is a discrete 0-4 grade, not continuous -- see module docstring)"
+      }
+    },
+    "pool_ordinal": {
+      "label": "pool_ordinal",
+      "qwk": 0.5692770926865582,
+      "patient_bootstrap_ci95": [
+        0.5297564440578951,
+        0.6054080310123834
+      ],
+      "referable_sens_spec_near_90pct_sens": {
+        "sensitivity": 1.0,
+        "specificity": 0.0,
+        "threshold": 0.0,
+        "note": "nearest achievable operating point (score is a discrete 0-4 grade, not continuous -- see module docstring)"
+      }
+    }
+  },
+  "arm_D_label_only_lookup_cited": 0.837913384185215,
+  "decomposition": {
+    "1_head_effect_ordinal_minus_multinomial_at_max": {
+      "mean_diff": 0.050005547758965874,
+      "ci95": [
+        0.023099192999928547,
+        0.0771886830811531
+      ],
+      "significantly_better": true
+    },
+    "2_fusion_effect_pool_minus_per_eye_max_ordinal": {
+      "mean_diff": 0.025013623955003658,
+      "ci95": [
+        0.0025832553198513186,
+        0.04682489827726999
+      ],
+      "significantly_better": true
+    },
+    "3_fusion_effect_concat_minus_per_eye_max_ordinal": {
+      "mean_diff": -0.06096809005919201,
+      "ci95": [
+        -0.08732089720977966,
+        -0.032806772061167756
+      ],
+      "significantly_better": false
+    },
+    "4_aggregation_effect_mean_minus_max_ordinal": {
+      "mean_diff": 0.004558148841160119,
+      "ci95": [
+        -0.00715635905269128,
+        0.016020740567826267
+      ],
+      "significantly_better": false
+    },
+    "5_aggregation_effect_min_minus_max_ordinal": {
+      "mean_diff": -0.11374550913264682,
+      "ci95": [
+        -0.1458850400457284,
+        -0.0823317083736553
+      ],
+      "significantly_better": false
+    },
+    "6_aggregation_effect_mean_minus_max_multinomial": {
+      "mean_diff": 0.011432020088921838,
+      "ci95": [
+        -0.007804425220936484,
+        0.029309234254109272
+      ],
+      "significantly_better": false
+    },
+    "7_aggregation_effect_min_minus_max_multinomial": {
+      "mean_diff": -0.12041259405328025,
+      "ci95": [
+        -0.16381944493693196,
+        -0.0799110934775082
+      ],
+      "significantly_better": false
+    },
+    "8_original_total_gain_pool_ordinal_minus_per_eye_max_multinomial": {
+      "mean_diff": 0.07501917171396955,
+      "ci95": [
+        0.045364342617175875,
+        0.10467107824208437
+      ],
+      "significantly_better": true
+    }
+  },
+  "verdict": "a",
+  "verdict_text": "(a) Bilateral feature fusion (mean-pooling) helps BEYOND the ordinal head and beyond the aggregation rule -- Claim 3 stands as originally written: fusion contributes +0.0250 QWK on top of per-eye-max-ordinal (CI [0.0025832553198513186, 0.04682489827726999]), significant on its own."
+}

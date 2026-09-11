@@ -1,0 +1,29 @@
+{
+  "headline": {
+    "label": "headline (224px, fast config, n=4)",
+    "n_runs": 4,
+    "values": [
+      0.5493731898753853,
+      0.5609720706372736,
+      0.5612023823454142,
+      0.5482672108991977
+    ],
+    "mean_qwk": 0.5549537134393177,
+    "std_qwk": 0.007097371483557383,
+    "any_cleared_target": false,
+    "all_cleared_target": false
+  },
+  "app": {
+    "label": "app (384px, best config, n=1)",
+    "n_runs": 1,
+    "values": [
+      0.6128464866600856
+    ],
+    "mean_qwk": 0.6128464866600856,
+    "std_qwk": 0.0,
+    "any_cleared_target": false,
+    "all_cleared_target": false
+  },
+  "gain_app_minus_headline": 0.05789277322076791,
+  "honest_finding": "Headline config (224px, fast, 4 runs): mean test QWK = 0.5550 +/- 0.0071. App config (384px, best, 1 run): test QWK = 0.6128. Gain from switching to the higher-res best config: +0.0579 QWK. Neither config cleared the 0.70 'correct -- proceed' acceptance-test bar. The gain is in the expected direction (higher res + longer effective training helps), which argues against a systemic preprocessing bug -- a broken pipeline would not scale predictably with a better config. But this is a SINGLE app-model run (n=1, no seed replicate, no CI) -- do not report +0.0579 as a statistically established gain. Either run a second seed for the app config before claiming the improvement is real and not run-to-run noise, or report it explicitly as a single-run observation."
+}

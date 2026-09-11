@@ -17,3 +17,6 @@ venv/
 
 # fine-tuned model weights -- large (.pt), never checked into git
 checkpoints/
+
+# regenerable intermediate feature cache
+cache/

@@ -1,0 +1,100 @@
+{
+  "run_name": "finetune_headline_p1_seed43",
+  "config_file": "configs\\finetune_headline.yaml",
+  "config": {
+    "model": "tf_efficientnet_b0",
+    "image_size": 224,
+    "batch_size": 32,
+    "grad_accum_steps": 1,
+    "epochs": 15,
+    "amp": "fp16",
+    "optimizer": "adamw",
+    "lr_head": 0.0003,
+    "lr_backbone": 3e-05,
+    "scheduler": "cosine",
+    "warmup_pct": 0.05,
+    "ema_decay": 0.999,
+    "freeze_backbone_epochs": 2,
+    "sampler": "class_balanced",
+    "early_stop_metric": "val_qwk",
+    "early_stop_patience": 4,
+    "num_workers": 6,
+    "pin_memory": true,
+    "persistent_workers": true,
+    "augment": true,
+    "grad_checkpointing": false
+  },
+  "split": "p1",
+  "seed": 43,
+  "n_train": 27145,
+  "n_val": 5816,
+  "n_test": 5819,
+  "best_epoch": 14,
+  "best_val_qwk": 0.5564539326351429,
+  "total_epochs_run": 15,
+  "training_minutes": 30.359367914994557,
+  "test_qwk": 0.5609720706372736,
+  "test_confusion_matrix": [
+    [
+      2810,
+      925,
+      346,
+      26,
+      34
+    ],
+    [
+      195,
+      165,
+      53,
+      4,
+      3
+    ],
+    [
+      265,
+      180,
+      389,
+      81,
+      32
+    ],
+    [
+      14,
+      13,
+      49,
+      69,
+      16
+    ],
+    [
+      8,
+      8,
+      30,
+      17,
+      87
+    ]
+  ],
+  "per_class_recall": {
+    "0": {
+      "n": 4141,
+      "recall": 0.678580053127264
+    },
+    "1": {
+      "n": 420,
+      "recall": 0.39285714285714285
+    },
+    "2": {
+      "n": 947,
+      "recall": 0.41077085533262936
+    },
+    "3": {
+      "n": 161,
+      "recall": 0.42857142857142855
+    },
+    "4": {
+      "n": 150,
+      "recall": 0.58
+    }
+  },
+  "grade1_recall_note": "expected: grade-1 recall 0.20-0.45 is normal (microaneurysms destroyed by downsampling) -- do not chase this, per MASTER_PLAN.md Part 10",
+  "referable_dr_auroc": 0.8512757117874674,
+  "acceptance_test_10_1_verdict": "undertrained or preprocessing bug",
+  "is_debug_run": false
+}

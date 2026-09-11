@@ -1,0 +1,409 @@
+{
+  "definition": "referable DR = true grade >= 2; score = prob_2+prob_3+prob_4",
+  "n_boot": 600,
+  "runs": {
+    "p1_class_balanced_seed42": {
+      "split": "p1",
+      "sampler": "class_balanced",
+      "seed": 42,
+      "n_test": 5819,
+      "n_referable": 1258,
+      "n_non_referable": 4561,
+      "referable_auroc": 0.8787713903980976,
+      "referable_auroc_ci95": [
+        0.8657756908628094,
+        0.8898692731789589
+      ],
+      "at_sensitivity_90": {
+        "threshold": 0.00261630412006975,
+        "sensitivity": 0.9006359300476947,
+        "specificity": 0.5746546809910107,
+        "tp": 1133,
+        "fn": 125,
+        "tn": 2621,
+        "fp": 1940,
+        "ppv": 0.36869508623494957,
+        "npv": 0.9544792425345958,
+        "specificity_ci95": [
+          0.5272323482349499,
+          0.6291899112261479
+        ]
+      },
+      "at_specificity_90": {
+        "threshold": 0.22006653250109998,
+        "sensitivity": 0.6971383147853736,
+        "specificity": 0.900460425345319,
+        "tp": 877,
+        "fn": 381,
+        "tn": 4107,
+        "fp": 454,
+        "ppv": 0.6589030803906837,
+        "npv": 0.9151069518716578
+      },
+      "at_argmax": {
+        "tp": 795,
+        "fn": 463,
+        "tn": 4271,
+        "fp": 290,
+        "sensitivity": 0.6319554848966613,
+        "specificity": 0.9364174523130893,
+        "ppv": 0.7327188940092166,
+        "npv": 0.9021968736797634
+      }
+    },
+    "p1_class_balanced_seed43": {
+      "split": "p1",
+      "sampler": "class_balanced",
+      "seed": 43,
+      "n_test": 5819,
+      "n_referable": 1258,
+      "n_non_referable": 4561,
+      "referable_auroc": 0.8805649543426347,
+      "referable_auroc_ci95": [
+        0.8696605229333343,
+        0.8918802359869114
+      ],
+      "at_sensitivity_90": {
+        "threshold": 0.0015431444114055,
+        "sensitivity": 0.9006359300476947,
+        "specificity": 0.5882481911861434,
+        "tp": 1133,
+        "fn": 125,
+        "tn": 2683,
+        "fp": 1878,
+        "ppv": 0.37628694785785455,
+        "npv": 0.9554843304843305,
+        "specificity_ci95": [
+          0.5567647535039209,
+          0.6345588165447996
+        ]
+      },
+      "at_specificity_90": {
+        "threshold": 0.17584132801,
+        "sensitivity": 0.6748807631160573,
+        "specificity": 0.9000219250164437,
+        "tp": 849,
+        "fn": 409,
+        "tn": 4105,
+        "fp": 456,
+        "ppv": 0.6505747126436782,
+        "npv": 0.909392999556934
+      },
+      "at_argmax": {
+        "tp": 745,
+        "fn": 513,
+        "tn": 4330,
+        "fp": 231,
+        "sensitivity": 0.5922098569157392,
+        "specificity": 0.949353212014909,
+        "ppv": 0.7633196721311475,
+        "npv": 0.8940739211232707
+      }
+    },
+    "p1_none_seed42": {
+      "split": "p1",
+      "sampler": "none",
+      "seed": 42,
+      "n_test": 5819,
+      "n_referable": 1258,
+      "n_non_referable": 4561,
+      "referable_auroc": 0.9019861136914931,
+      "referable_auroc_ci95": [
+        0.8909598803952374,
+        0.9120782112568521
+      ],
+      "at_sensitivity_90": {
+        "threshold": 0.021961737457499998,
+        "sensitivity": 0.9006359300476947,
+        "specificity": 0.6579697434773076,
+        "tp": 1133,
+        "fn": 125,
+        "tn": 3001,
+        "fp": 1560,
+        "ppv": 0.4207203861864092,
+        "npv": 0.9600127959053103,
+        "specificity_ci95": [
+          0.6128372732896433,
+          0.6966141201682083
+        ]
+      },
+      "at_specificity_90": {
+        "threshold": 0.17625301764,
+        "sensitivity": 0.7488076311605724,
+        "specificity": 0.9011181758386319,
+        "tp": 942,
+        "fn": 316,
+        "tn": 4110,
+        "fp": 451,
+        "ppv": 0.6762383345297918,
+        "npv": 0.9286037053773158
+      },
+      "at_argmax": {
+        "tp": 779,
+        "fn": 479,
+        "tn": 4364,
+        "fp": 197,
+        "sensitivity": 0.6192368839427663,
+        "specificity": 0.9568077176057882,
+        "ppv": 0.798155737704918,
+        "npv": 0.9010943629981416
+      }
+    },
+    "p1_none_seed43": {
+      "split": "p1",
+      "sampler": "none",
+      "seed": 43,
+      "n_test": 5819,
+      "n_referable": 1258,
+      "n_non_referable": 4561,
+      "referable_auroc": 0.898788860697369,
+      "referable_auroc_ci95": [
+        0.8884561428272415,
+        0.9091243285037661
+      ],
+      "at_sensitivity_90": {
+        "threshold": 0.0006918631907,
+        "sensitivity": 0.9006359300476947,
+        "specificity": 0.6632317474238105,
+        "tp": 1133,
+        "fn": 125,
+        "tn": 3025,
+        "fp": 1536,
+        "ppv": 0.42450355938553763,
+        "npv": 0.9603174603174603,
+        "specificity_ci95": [
+          0.6013201947987141,
+          0.7066513174688003
+        ]
+      },
+      "at_specificity_90": {
+        "threshold": 0.09828474363950002,
+        "sensitivity": 0.7273449920508744,
+        "specificity": 0.9028721771541328,
+        "tp": 915,
+        "fn": 343,
+        "tn": 4118,
+        "fp": 443,
+        "ppv": 0.6737849779086893,
+        "npv": 0.9231114099977583
+      },
+      "at_argmax": {
+        "tp": 791,
+        "fn": 467,
+        "tn": 4348,
+        "fp": 213,
+        "sensitivity": 0.6287758346581876,
+        "specificity": 0.9532997149747863,
+        "ppv": 0.7878486055776892,
+        "npv": 0.9030114226375908
+      }
+    },
+    "p2_class_balanced_seed42": {
+      "split": "p2",
+      "sampler": "class_balanced",
+      "seed": 42,
+      "n_test": 5814,
+      "n_referable": 1246,
+      "n_non_referable": 4568,
+      "referable_auroc": 0.870790294265643,
+      "referable_auroc_ci95": [
+        0.8568751042083079,
+        0.8840939123809706
+      ],
+      "at_sensitivity_90": {
+        "threshold": 0.0024047350454190516,
+        "sensitivity": 0.9004815409309791,
+        "specificity": 0.5709281961471103,
+        "tp": 1122,
+        "fn": 124,
+        "tn": 2608,
+        "fp": 1960,
+        "ppv": 0.36404931862427,
+        "npv": 0.9546120058565154,
+        "specificity_ci95": [
+          0.5207013271460286,
+          0.6182613882346016
+        ]
+      },
+      "at_specificity_90": {
+        "threshold": 0.19776840156399997,
+        "sensitivity": 0.6653290529695024,
+        "specificity": 0.9012697022767076,
+        "tp": 829,
+        "fn": 417,
+        "tn": 4117,
+        "fp": 451,
+        "ppv": 0.64765625,
+        "npv": 0.908028231142479
+      },
+      "at_argmax": {
+        "tp": 744,
+        "fn": 502,
+        "tn": 4298,
+        "fp": 270,
+        "sensitivity": 0.5971107544141252,
+        "specificity": 0.940893169877408,
+        "ppv": 0.7337278106508875,
+        "npv": 0.8954166666666666
+      }
+    },
+    "p2_class_balanced_seed43": {
+      "split": "p2",
+      "sampler": "class_balanced",
+      "seed": 43,
+      "n_test": 5814,
+      "n_referable": 1246,
+      "n_non_referable": 4568,
+      "referable_auroc": 0.8593731991409287,
+      "referable_auroc_ci95": [
+        0.8452312776043119,
+        0.8738318424175973
+      ],
+      "at_sensitivity_90": {
+        "threshold": 0.0015622881934165,
+        "sensitivity": 0.9004815409309791,
+        "specificity": 0.537215411558669,
+        "tp": 1122,
+        "fn": 124,
+        "tn": 2454,
+        "fp": 2114,
+        "ppv": 0.34672435105067984,
+        "npv": 0.951900698215671,
+        "specificity_ci95": [
+          0.47489517342413684,
+          0.592756865232533
+        ]
+      },
+      "at_specificity_90": {
+        "threshold": 0.22065247538165,
+        "sensitivity": 0.6540930979133226,
+        "specificity": 0.9006129597197898,
+        "tp": 815,
+        "fn": 431,
+        "tn": 4114,
+        "fp": 454,
+        "ppv": 0.6422379826635146,
+        "npv": 0.9051705170517051
+      },
+      "at_argmax": {
+        "tp": 716,
+        "fn": 530,
+        "tn": 4283,
+        "fp": 285,
+        "sensitivity": 0.5746388443017657,
+        "specificity": 0.9376094570928196,
+        "ppv": 0.7152847152847153,
+        "npv": 0.8898815707458966
+      }
+    },
+    "p2_none_seed42": {
+      "split": "p2",
+      "sampler": "none",
+      "seed": 42,
+      "n_test": 5814,
+      "n_referable": 1246,
+      "n_non_referable": 4568,
+      "referable_auroc": 0.8862975356517386,
+      "referable_auroc_ci95": [
+        0.8729507811806263,
+        0.9000658610410156
+      ],
+      "at_sensitivity_90": {
+        "threshold": 0.008662609120034002,
+        "sensitivity": 0.9004815409309791,
+        "specificity": 0.601138353765324,
+        "tp": 1122,
+        "fn": 124,
+        "tn": 2746,
+        "fp": 1822,
+        "ppv": 0.3811141304347826,
+        "npv": 0.956794425087108,
+        "specificity_ci95": [
+          0.5415262315027585,
+          0.6564243906271009
+        ]
+      },
+      "at_specificity_90": {
+        "threshold": 0.18316070478000002,
+        "sensitivity": 0.7191011235955056,
+        "specificity": 0.9008318739054291,
+        "tp": 896,
+        "fn": 350,
+        "tn": 4115,
+        "fp": 453,
+        "ppv": 0.6641957005189029,
+        "npv": 0.921612541993281
+      },
+      "at_argmax": {
+        "tp": 776,
+        "fn": 470,
+        "tn": 4360,
+        "fp": 208,
+        "sensitivity": 0.622792937399679,
+        "specificity": 0.9544658493870403,
+        "ppv": 0.7886178861788617,
+        "npv": 0.9026915113871635
+      }
+    },
+    "p2_none_seed43": {
+      "split": "p2",
+      "sampler": "none",
+      "seed": 43,
+      "n_test": 5814,
+      "n_referable": 1246,
+      "n_non_referable": 4568,
+      "referable_auroc": 0.8871206600174849,
+      "referable_auroc_ci95": [
+        0.8743298372362475,
+        0.8998844491917832
+      ],
+      "at_sensitivity_90": {
+        "threshold": 0.026102225488,
+        "sensitivity": 0.9004815409309791,
+        "specificity": 0.6247810858143608,
+        "tp": 1122,
+        "fn": 124,
+        "tn": 2854,
+        "fp": 1714,
+        "ppv": 0.39562764456981664,
+        "npv": 0.9583613163196776,
+        "specificity_ci95": [
+          0.5579063744627709,
+          0.6627486716171677
+        ]
+      },
+      "at_specificity_90": {
+        "threshold": 0.24256025298,
+        "sensitivity": 0.7086677367576244,
+        "specificity": 0.9001751313485113,
+        "tp": 883,
+        "fn": 363,
+        "tn": 4112,
+        "fp": 456,
+        "ppv": 0.6594473487677371,
+        "npv": 0.9188826815642458
+      },
+      "at_argmax": {
+        "tp": 781,
+        "fn": 465,
+        "tn": 4348,
+        "fp": 220,
+        "sensitivity": 0.6268057784911717,
+        "specificity": 0.9518388791593695,
+        "ppv": 0.7802197802197802,
+        "npv": 0.9033866611261168
+      }
+    }
+  },
+  "primary_endpoint": {
+    "protocol": "P2 (patient-level)",
+    "sampler": "none",
+    "runs": [
+      "p2_none_seed42",
+      "p2_none_seed43"
+    ],
+    "mean_specificity_at_90_sensitivity": 0.6129597197898424,
+    "mean_referable_auroc": 0.8867090978346117
+  },
+  "headline": "On the frozen patient-level test set, the converged model reaches referable-DR AUROC 0.887. Held at the clinically required 90% sensitivity, it achieves 61.3% specificity -- i.e. it catches 9 of every 10 referable patients while correctly clearing 61% of those who do not need referral."
+}
