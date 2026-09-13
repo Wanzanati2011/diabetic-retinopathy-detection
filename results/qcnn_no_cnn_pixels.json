@@ -1,0 +1,102 @@
+{
+  "experiment": "qcnn_no_cnn",
+  "chosen_config": {
+    "n_qubits": 4,
+    "n_conv_reps": 1,
+    "patch_side": 4
+  },
+  "n_train_sample": 2000,
+  "n_val_sample": 800,
+  "n_train_full_p2": 27123,
+  "n_val_full_p2": 5843,
+  "n_test": 5814,
+  "proc_size": 224,
+  "diff_method": "backprop",
+  "epochs_max": 30,
+  "batch_size": 32,
+  "lr": 0.05,
+  "patience": 6,
+  "seed": 42,
+  "qcnn": {
+    "qwk": 0.0,
+    "patient_bootstrap_ci95": [
+      0.0,
+      0.0
+    ]
+  },
+  "matched_classical_baseline": {
+    "qwk": -0.0002204966376204709,
+    "patient_bootstrap_ci95": [
+      -0.0036348267558598767,
+      0.003655484882521395
+    ],
+    "note": "multinomial logistic regression on the SAME downsampled pixels"
+  },
+  "paired_diff_qcnn_minus_baseline": {
+    "mean_diff": 0.00018157446876131765,
+    "ci95": [
+      -0.0034010051821139198,
+      0.003343500864516141
+    ],
+    "significantly_better": false
+  },
+  "full_training_set_reference_cited": {
+    "source_file": "results/claim2_protocols.json",
+    "source_backbone_size": "tf_efficientnet_b0@224",
+    "multinomial_qwk_full_resolution_cnn_features": 0.5588693414399228,
+    "ordinal_qwk_full_resolution_cnn_features": 0.6212058801407718,
+    "n_train_full": 27123,
+    "note": "Cited from results/claim2_protocols.json, NOT recomputed. Trained on FULL-RESOLUTION CNN features (not downsampled raw pixels) and the full P2 train set -- context only, to show how much is lost by abandoning CNN features entirely. Not a matched comparison for this experiment."
+  },
+  "verdict": "inconclusive",
+  "verdict_text": "QCNN's point estimate is higher (diff=+0.0002) but the paired bootstrap CI includes 0 ([-0.0034010051821139198, 0.003343500864516141]) -- not distinguishable from the matched classical baseline at this sample size. Report as inconclusive, not as a win.",
+  "literature": {
+    "cong_choi_lukin_2019_arxiv_1810.03787": "Cong, Choi & Lukin, 'Quantum Convolutional Neural Networks', arXiv:1810.03787 (published Nature Physics 15, 1273-1278, 2019, DOI 10.1038/s41567-019-0648-8). CONFIRMED by web search (title, authors, arXiv id, journal, DOI all matched). This is the source of the conv/pool architecture used in this file: a shared, translation-invariant parameterized 2-qubit 'convolution' gate applied across the qubit register, alternated with parameterized 'pooling' gates that halve the active register each stage. The original paper targets quantum phase recognition and small image benchmarks with a SINGLE final qubit for BINARY decisions; this script adapts the same conv/pool pattern to a 5-class problem by stopping pooling at 2 surviving qubits (4 basis outcomes) instead of 1, and generalizes the ansatz's conv/pool depth (n_conv_reps) and register size (n_qubits) into the two explicitly swept hyperparameters this project's standard requires."
+  },
+  "selection_method": "grid search over qubits=[4, 8] x conv_reps=[1, 2, 3], selected by validation QWK",
+  "val_qwk_at_selection": 0.0,
+  "sweep": [
+    {
+      "n_qubits": 4,
+      "n_conv_reps": 1,
+      "val_qwk": 0.0,
+      "epochs_run": 7,
+      "seconds": 862.2626452445984
+    },
+    {
+      "n_qubits": 4,
+      "n_conv_reps": 2,
+      "val_qwk": 0.0,
+      "epochs_run": 7,
+      "seconds": 2002.0239102840424
+    },
+    {
+      "n_qubits": 4,
+      "n_conv_reps": 3,
+      "val_qwk": 0.0,
+      "epochs_run": 7,
+      "seconds": 3566.2251698970795
+    },
+    {
+      "n_qubits": 8,
+      "n_conv_reps": 1,
+      "val_qwk": 0.0,
+      "epochs_run": 7,
+      "seconds": 8016.40450668335
+    },
+    {
+      "n_qubits": 8,
+      "n_conv_reps": 2,
+      "val_qwk": 0.0,
+      "epochs_run": 7,
+      "seconds": 118.4559235572815
+    },
+    {
+      "n_qubits": 8,
+      "n_conv_reps": 3,
+      "val_qwk": 0.0,
+      "epochs_run": 7,
+      "seconds": 158.16648077964783
+    }
+  ]
+}

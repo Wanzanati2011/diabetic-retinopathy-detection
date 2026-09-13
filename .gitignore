@@ -27,3 +27,6 @@ Thumbs.db
 
 # notebook checkpoints
 .ipynb_checkpoints/
+
+# local Claude Code project config
+.claude/

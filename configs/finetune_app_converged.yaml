@@ -1,0 +1,43 @@
+# Converged retrain of the APP checkpoint (MASTER_PLAN.md Part 12 model),
+# at the app's real resolution -- 384px, not the 224px used by
+# finetune_converged.yaml's Claim-2b ablation runs.
+#
+# This takes finetune_app.yaml (the original 384px/15-epoch app recipe) and
+# applies exactly the two changes finetune_converged.yaml made for Phase 6b
+# convergence, at 384px instead of 224px:
+#   epochs 15 -> 40, early_stop_patience 4 -> 8, lr_backbone 3e-5 -> 1e-4.
+# Everything else (image_size, batch_size, grad_accum_steps, sampler,
+# augment, freeze_backbone_epochs) is unchanged from finetune_app.yaml, so
+# this is an apples-to-apples "same model, actually converged" comparison,
+# not a different recipe.
+#
+# Honest expectation, set from the ALREADY-RUN 224px converged ablations
+# (results/finetune_converged_p2_*_seed42.json): giving this same recipe
+# more epochs + patience raised test QWK from ~0.55-0.56 (15-epoch) to
+# ~0.63-0.67 (40-epoch/patience-8) at 224px -- better, but STILL inside the
+# 0.40-0.70 "undertrained or preprocessing bug" band, not the 0.70+ target
+# band. Expect the same order of improvement here, not a jump to "solved."
+# The real reason to run this isn't chasing the acceptance-test band, it's
+# that a more-converged model should have wider decision margins -> fewer
+# of the tiny-noise boundary flips test_app.py's Acceptance Test 12.1 found.
+model: tf_efficientnet_b0
+image_size: 384
+batch_size: 8                # unchanged from finetune_app.yaml -- 384px VRAM budget
+grad_accum_steps: 4           # unchanged -- effective batch size still 32
+epochs: 40                    # CHANGED from 15 (finetune_converged.yaml's change)
+amp: fp16
+optimizer: adamw              # documentation only -- finetune_converged.py always uses AdamW
+lr_head: 3.0e-4
+lr_backbone: 1.0e-4            # CHANGED from 3e-5 (finetune_converged.yaml's change)
+scheduler: cosine              # documentation only -- always warmup+cosine, now over 40 epochs
+warmup_pct: 0.05
+ema_decay: 0.999
+freeze_backbone_epochs: 2
+sampler: class_balanced        # default if --sampler is not passed on the command line
+early_stop_metric: val_qwk     # documentation only -- always val_qwk
+early_stop_patience: 8         # CHANGED from 4 (finetune_converged.yaml's change)
+num_workers: 6
+pin_memory: true
+persistent_workers: true
+augment: true
+grad_checkpointing: false      # OOM escalation option -- flip to true if 40-epoch/384px run OOMs

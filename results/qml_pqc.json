@@ -1,0 +1,153 @@
+{
+  "backbone": "resnet50",
+  "size": 224,
+  "chosen_config": {
+    "n_qubits": 8,
+    "n_layers": 3
+  },
+  "n_train_sample": 3000,
+  "n_val_sample": 1000,
+  "n_train_full_p2": 27123,
+  "n_val_full_p2": 5843,
+  "n_test": 5814,
+  "diff_method": "adjoint",
+  "epochs_max": 40,
+  "batch_size": 32,
+  "lr": 0.05,
+  "patience": 8,
+  "seed": 42,
+  "matched_subsample_heads": {
+    "multinomial": {
+      "label": "multinomial (matched subsample)",
+      "qwk": 0.34566612179852274,
+      "patient_bootstrap_ci95": [
+        0.3133424008947648,
+        0.378598974790208
+      ]
+    },
+    "ordinal": {
+      "label": "ordinal (matched subsample)",
+      "qwk": 0.2642160854703851,
+      "patient_bootstrap_ci95": [
+        0.23519787838024567,
+        0.2964231720990555
+      ],
+      "thresholds": [
+        0.6896408484086665,
+        1.1212841119472161,
+        2.374178732344659,
+        2.892354419734838
+      ]
+    },
+    "qml": {
+      "label": "qml (q=8, l=3)",
+      "qwk": 0.1094501173521173,
+      "patient_bootstrap_ci95": [
+        0.0827416427706072,
+        0.13499686938271135
+      ]
+    }
+  },
+  "paired_diffs": {
+    "qml_minus_ordinal": {
+      "mean_diff": -0.15441675683834677,
+      "ci95": [
+        -0.19360810106511744,
+        -0.11687967323627876
+      ],
+      "significantly_better": false
+    },
+    "qml_minus_multinomial": {
+      "mean_diff": -0.23543740008936617,
+      "ci95": [
+        -0.27303471563492154,
+        -0.19568509212901147
+      ],
+      "significantly_better": false
+    }
+  },
+  "full_training_set_reference_cited": {
+    "source_file": "results/claim2_protocols.json",
+    "source_backbone_size": "tf_efficientnet_b0@224",
+    "matches_this_run_backbone_size": false,
+    "multinomial_qwk_full_train": 0.5588693414399228,
+    "ordinal_qwk_full_train": 0.6212058801407718,
+    "n_train_full": 27123,
+    "note": "Cited from results/claim2_protocols.json, NOT recomputed here. Trained on the FULL P2 train set (not the matched subsample used for the three-way comparison above) -- context only, not a like-for-like number."
+  },
+  "verdict": "negative_result",
+  "verdict_text": "QML does not significantly beat either classical head at this qubit/layer budget and training-set size (vs ordinal: diff=-0.1544, CI [-0.19360810106511744, -0.11687967323627876]; vs multinomial: diff=-0.2354, CI [-0.27303471563492154, -0.19568509212901147]). Report honestly -- a negative result here does not undermine this project's core claims, and a small, CPU-simulated variational circuit trained on a few thousand images losing to a Ridge regression is a plausible, unsurprising outcome, not a bug to chase.",
+  "literature": {
+    "ahmed2024_arxiv_2405.01734": "Ahmed et al., 'Diabetic Retinopathy Detection Using Quantum Transfer Learning', arXiv:2405.01734. CONFIRMED by fetching the paper: ResNet-18/34/50/101/152 and Inception V3 frozen features feed a 4-qubit 'dressed quantum circuit' -- Hadamard superposition init, RY angle encoding, repeated {CNOT entangling layer + trainable RY rotation layer} blocks (depth = q_depth), PauliZ measurement, Adam optimizer with a step LR schedule. Evaluated on APTOS 2019 (the same dataset this project uses). Reported accuracy 97.2-98.5% across backbones (vs. 85.3-89.8% classical-only). Closest architectural precedent for this experiment -- this script's 'dressed classifier' design (classical frozen features -> angle encoding -> variational ansatz -> classical read-out) follows the same overall pattern, generalized to RX+RY encoding and a swept StronglyEntanglingLayers ansatz instead of a fixed RY-only one.",
+    "hqcnn2025_arxiv_2509.14277": "'HQCNN: A Hybrid Quantum-Classical Neural Network for Medical Image Classification', arXiv:2509.14277. CONFIRMED by fetching the paper: 4-qubit circuit, RY angle embedding + cyclic U3 rotations, plus 'Quantum Attention-Fourier' layers (Toffoli-based local attention + phase-encoded entanglement mimicking a Fourier basis). Evaluated on MedMNIST v2 (PathMNIST, OrganAMNIST, BloodMNIST, OCTMNIST, BreastMNIST, PneumoniaMNIST) -- NOT diabetic retinopathy specifically. Cited here as a more elaborate ansatz for future work; NOT replicated -- this script uses the simpler, better-precedented StronglyEntanglingLayers.",
+    "quantumnet2025": "'QuantumNet: An enhanced diabetic retinopathy detection model using classical deep learning-quantum transfer learning' (PMC/ScienceDirect, 2025). EXISTENCE confirmed via search (indexed on PubMed/PMC/ScienceDirect). Full circuit methodology NOT independently confirmed -- automated fetch was blocked (paywall / bot-check) on every mirror tried. Cited for topic/existence only; no methodology claim is made about it in this project.",
+    "balanced_multiclass_2025": "'Hybrid quantum-classical deep learning framework for balanced multiclass diabetic retinopathy classification' (ScienceDirect, 2025). EXISTENCE confirmed via search. Full methodology NOT independently confirmed -- fetch returned a 400/blocked response. Cited for topic/existence only."
+  },
+  "selection_method": "grid search over qubits=[4, 6, 8] x layers=[1, 2, 3], selected by validation QWK",
+  "val_qwk_at_selection": 0.1581626095673856,
+  "sweep": [
+    {
+      "n_qubits": 4,
+      "n_layers": 1,
+      "val_qwk": 0.0,
+      "epochs_run": 9,
+      "seconds": 95.41123962402344
+    },
+    {
+      "n_qubits": 4,
+      "n_layers": 2,
+      "val_qwk": 0.032938368898632,
+      "epochs_run": 25,
+      "seconds": 343.39677929878235
+    },
+    {
+      "n_qubits": 4,
+      "n_layers": 3,
+      "val_qwk": 0.12571147110332737,
+      "epochs_run": 15,
+      "seconds": 273.24390602111816
+    },
+    {
+      "n_qubits": 6,
+      "n_layers": 1,
+      "val_qwk": 0.0,
+      "epochs_run": 9,
+      "seconds": 126.78466057777405
+    },
+    {
+      "n_qubits": 6,
+      "n_layers": 2,
+      "val_qwk": 0.013561819521379692,
+      "epochs_run": 16,
+      "seconds": 301.5443148612976
+    },
+    {
+      "n_qubits": 6,
+      "n_layers": 3,
+      "val_qwk": 0.10121607986830228,
+      "epochs_run": 19,
+      "seconds": 502.0729253292084
+    },
+    {
+      "n_qubits": 8,
+      "n_layers": 1,
+      "val_qwk": 0.02672618374957636,
+      "epochs_run": 22,
+      "seconds": 383.1910741329193
+    },
+    {
+      "n_qubits": 8,
+      "n_layers": 2,
+      "val_qwk": 0.06041965113339509,
+      "epochs_run": 27,
+      "seconds": 721.648556470871
+    },
+    {
+      "n_qubits": 8,
+      "n_layers": 3,
+      "val_qwk": 0.1581626095673856,
+      "epochs_run": 25,
+      "seconds": 957.4902033805847
+    }
+  ]
+}
