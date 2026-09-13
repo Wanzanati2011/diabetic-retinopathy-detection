@@ -20,3 +20,10 @@ checkpoints/
 
 # regenerable intermediate feature cache
 cache/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# notebook checkpoints
+.ipynb_checkpoints/
