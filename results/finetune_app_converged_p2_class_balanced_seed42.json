@@ -1,0 +1,102 @@
+{
+  "run_name": "finetune_app_converged_p2_class_balanced_seed42",
+  "config_file": "configs\\finetune_app_converged.yaml",
+  "config": {
+    "model": "tf_efficientnet_b0",
+    "image_size": 384,
+    "batch_size": 8,
+    "grad_accum_steps": 4,
+    "epochs": 40,
+    "amp": "fp16",
+    "optimizer": "adamw",
+    "lr_head": 0.0003,
+    "lr_backbone": 0.0001,
+    "scheduler": "cosine",
+    "warmup_pct": 0.05,
+    "ema_decay": 0.999,
+    "freeze_backbone_epochs": 2,
+    "sampler": "class_balanced",
+    "early_stop_metric": "val_qwk",
+    "early_stop_patience": 8,
+    "num_workers": 0,
+    "pin_memory": true,
+    "persistent_workers": true,
+    "augment": true,
+    "grad_checkpointing": false
+  },
+  "split": "p2",
+  "seed": 42,
+  "sampler": "class_balanced",
+  "n_train": 27123,
+  "n_val": 5843,
+  "n_test": 5814,
+  "best_epoch": 32,
+  "best_val_qwk": 0.7331276644121583,
+  "total_epochs_run": 40,
+  "training_minutes": 0.0,
+  "test_qwk": 0.7159509675171527,
+  "test_confusion_matrix": [
+    [
+      3775,
+      177,
+      164,
+      1,
+      4
+    ],
+    [
+      311,
+      72,
+      61,
+      3,
+      0
+    ],
+    [
+      279,
+      76,
+      539,
+      37,
+      14
+    ],
+    [
+      8,
+      3,
+      93,
+      45,
+      8
+    ],
+    [
+      11,
+      3,
+      45,
+      7,
+      78
+    ]
+  ],
+  "per_class_recall": {
+    "0": {
+      "n": 4121,
+      "recall": 0.9160397961659791
+    },
+    "1": {
+      "n": 447,
+      "recall": 0.1610738255033557
+    },
+    "2": {
+      "n": 945,
+      "recall": 0.5703703703703704
+    },
+    "3": {
+      "n": 157,
+      "recall": 0.28662420382165604
+    },
+    "4": {
+      "n": 144,
+      "recall": 0.5416666666666666
+    }
+  },
+  "grade1_recall_note": "grade-1 recall outside the MASTER_PLAN.md 0.20-0.45 expected band -- note but this band is a guideline, not a hard pass/fail test",
+  "referable_dr_auroc": 0.9117124008736891,
+  "acceptance_test_10_1_verdict": "correct -- proceed",
+  "curve_file": "results\\finetune_app_converged_p2_class_balanced_seed42_curve.json",
+  "is_debug_run": false
+}

@@ -1,0 +1,18 @@
+{
+  "temperature": 3.367437593337308,
+  "reject_tau": 0.5927437636279227,
+  "reject_tau_basis": "acceptance_test_11_1_coverage",
+  "reject_tau_by_pre_registered_sensitivity_rule": 0.2446171541624117,
+  "reject_signal": "max_softmax",
+  "reject_action": "flag 'UNCERTAIN -- refer to a human grader'. A rejected case MUST be routed to a human, never discarded; the selective metrics assume otherwise.",
+  "referral_threshold": 0.13485552757713531,
+  "referral_score": "P(grade>=2) = p2 + p3 + p4, post-temperature",
+  "rule": "smallest tau such that selective referable-DR sensitivity on the VALIDATION fold is >= 0.90, at the referral threshold itself fixed on validation for >= 90% sensitivity at full coverage",
+  "rule_note": "The pre-registered sensitivity rule is degenerate for this model -- see reject_option.rule_degeneracy in results/calibration_reject.json. The shipped tau comes from the pre-registered 80% coverage point instead.",
+  "fitted_on": "p2 validation fold",
+  "val_image_id_sha256_16": "ab824abc42dfdf7b",
+  "source_checkpoint": "checkpoints/finetune_app_converged_p2_class_balanced_seed42/best.pt",
+  "source_results": "results/calibration_reject.json",
+  "acceptance_test_11_1_verdict": "pass",
+  "warning": "If acceptance_test_11_1_verdict is not 'pass', the confidence score did not carry usable information at the tested operating point. The application may still display a calibrated probability, but it must not claim that its abstention improves accuracy."
+}

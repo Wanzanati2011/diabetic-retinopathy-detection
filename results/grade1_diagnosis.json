@@ -1,0 +1,166 @@
+{
+  "run_name": "finetune_app_converged_p2_class_balanced_seed42",
+  "n_test": 5814,
+  "n_test_patients": 3185,
+  "n_grade1": 447,
+  "expected_written_in_advance": {
+    "most_grade1_error_lands_on_grade0": true,
+    "balanced_rule_recovers_grade1_recall_to_at_least": 0.3,
+    "acceptable_outcomes": [
+      "H1 supported: a non-argmax rule recovers grade-1 recall -> the fix is calibration and thresholding, and R1 is where it happens.",
+      "H2 supported: no rule recovers it -> the evidence is not in a 384px image; report as a measurement ceiling with resolution as the fix."
+    ]
+  },
+  "confusion_row_grade1": {
+    "No DR": 311,
+    "Mild NPDR": 72,
+    "Moderate NPDR": 61,
+    "Severe NPDR": 3,
+    "Proliferative DR": 0
+  },
+  "confusion_row_grade1_fractions": {
+    "No DR": 0.6957494407158836,
+    "Mild NPDR": 0.1610738255033557,
+    "Moderate NPDR": 0.13646532438478748,
+    "Severe NPDR": 0.006711409395973154,
+    "Proliferative DR": 0.0
+  },
+  "confusion_matrix_full": [
+    [
+      3775,
+      177,
+      164,
+      1,
+      4
+    ],
+    [
+      311,
+      72,
+      61,
+      3,
+      0
+    ],
+    [
+      279,
+      76,
+      539,
+      37,
+      14
+    ],
+    [
+      8,
+      3,
+      93,
+      45,
+      8
+    ],
+    [
+      11,
+      3,
+      45,
+      7,
+      78
+    ]
+  ],
+  "decision_rules": {
+    "argmax": {
+      "grade1_recall": 0.1610738255033557,
+      "grade1_recall_patient_bootstrap_ci95": [
+        0.12727171266233764,
+        0.19676109225741578
+      ],
+      "per_class_recall": {
+        "0": 0.9160397961659791,
+        "1": 0.1610738255033557,
+        "2": 0.5703703703703704,
+        "3": 0.28662420382165604,
+        "4": 0.5416666666666666
+      },
+      "qwk": 0.7159509675171527
+    },
+    "prior_corrected_argmax": {
+      "grade1_recall": 0.22371364653243847,
+      "grade1_recall_patient_bootstrap_ci95": [
+        0.18475475070194436,
+        0.26279370018560977
+      ],
+      "per_class_recall": {
+        "0": 0.8376607619509828,
+        "1": 0.22371364653243847,
+        "2": 0.562962962962963,
+        "3": 0.3375796178343949,
+        "4": 0.6111111111111112
+      },
+      "qwk": 0.6968509811716904
+    },
+    "expected_grade_rounded": {
+      "grade1_recall": 0.22818791946308725,
+      "grade1_recall_patient_bootstrap_ci95": [
+        0.1891238146012052,
+        0.26835131765285386
+      ],
+      "per_class_recall": {
+        "0": 0.8968696918223732,
+        "1": 0.22818791946308725,
+        "2": 0.5301587301587302,
+        "3": 0.2929936305732484,
+        "4": 0.5069444444444444
+      },
+      "qwk": 0.7278999328991604
+    },
+    "temperature_scaled_argmax": {
+      "grade1_recall": 0.1610738255033557,
+      "grade1_recall_patient_bootstrap_ci95": [
+        0.12727171266233764,
+        0.19676109225741578
+      ],
+      "per_class_recall": {
+        "0": 0.9160397961659791,
+        "1": 0.1610738255033557,
+        "2": 0.5703703703703704,
+        "3": 0.28662420382165604,
+        "4": 0.5416666666666666
+      },
+      "qwk": 0.7159509675171527
+    }
+  },
+  "ordinal_read_vs_argmax": {
+    "comparison": "expected_grade_rounded minus argmax, same probabilities",
+    "observed_diff": 0.011948965382007737,
+    "paired_patient_bootstrap_ci95": [
+      0.005528872117502906,
+      0.01853537431813512
+    ],
+    "excludes_zero": true,
+    "reading": "The deployed model uses a plain five-way softmax. Reading its output ordinally -- expected grade, rounded -- costs nothing at inference and recovers some of the ordinal structure the argmax discards. If this interval excludes zero it is a free improvement on the shipped model and independent corroboration of the project's ordinal-head finding, obtained without retraining anything."
+  },
+  "prior_checkpoint_recall": {
+    "0": 0.687,
+    "1": 0.461,
+    "2": 0.354,
+    "3": 0.452,
+    "4": 0.549
+  },
+  "best_non_argmax_rule": "expected_grade_rounded",
+  "best_non_argmax_grade1_recall": 0.22818791946308725,
+  "partial_recovery_note": "The verdict is set by the 0.30 bar written down in advance, and that bar was missed. But the recovery is not nothing: 0.161 -> 0.228 is a 42% relative improvement in grade-1 recall from a different read of the same probabilities. The honest sentence is 'partial recovery, below the pre-registered bar', not 'no recovery'. Report both the number and the bar.",
+  "clinical_note": {
+    "grade1_is_referable": false,
+    "mean_referable_score_on_grade1": 0.14939144163989243,
+    "grade1_predicted_referable": 64,
+    "grade1_predicted_grade0": 311,
+    "reading": "Grade 1 is not referable, so a grade-1 miss does not directly cost a referral. The cost is in early detection -- which is the part of screening that most justifies doing it at all, so this is a real limitation and not a technicality to wave away."
+  },
+  "merge_experiment_link": {
+    "source": "results/claim5_grade1_merge.json",
+    "ordinal_merged_minus_mapped": 0.03209340430550378,
+    "ordinal_ci95": [
+      0.016867516002735023,
+      0.04646198511350443
+    ],
+    "verdict": "merge_helps_but_referable_moved",
+    "reading": "If most grade-1 mass lands on grade 0 anyway, then the QWK gain from collapsing grades 0 and 1 and this recall collapse are two views of the same phenomenon: the 0/1 boundary is not being drawn from image evidence. Note that the merge also MOVED the referral operating point (sens +0.093 / spec -0.032), so the gain must always be quoted with that caveat."
+  },
+  "verdict": "H2_representation_ceiling",
+  "verdict_text": "No decision rule recovers grade-1 recall: the best (expected_grade_rounded) reaches only 0.228, against the 0.30 threshold written down in advance. The evidence for Mild NPDR is not recoverable from the 384px representation at any operating point. This SUPPORTS the measurement-ceiling argument already made from three independent observations in Section 1.3 (grade-1 partner transfer at 45.8% against 72-94% for every other grade; three corrupted black frames carrying a human grade of 1; recall stuck at 8.7-14.0% across all eight converged runs). Report resolution as the fix, and state plainly that it was not affordable on a single consumer GPU."
+}

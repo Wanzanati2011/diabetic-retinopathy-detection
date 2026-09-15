@@ -1,0 +1,40 @@
+{
+  "run_name": "finetune_app_converged_p2_class_balanced_seed42",
+  "checkpoint": "checkpoints\\finetune_app_converged_p2_class_balanced_seed42\\best.pt",
+  "model": "tf_efficientnet_b0",
+  "image_size": 384,
+  "split": "p2",
+  "sampler": "class_balanced",
+  "seed": 42,
+  "checkpoint_epoch": 32,
+  "checkpoint_val_qwk": 0.7331276644121583,
+  "autocast_fp16": true,
+  "weights": "EMA (best.pt stores ema.state_dict())",
+  "inference_only": true,
+  "folds": {
+    "val": {
+      "n_images": 5843,
+      "n_patients": 3188,
+      "qwk": 0.7331276644121583,
+      "referable_auroc": 0.9090925759294489,
+      "image_id_sha256_16": "ab824abc42dfdf7b",
+      "file": "finetune_app_converged_p2_class_balanced_seed42_val_predictions.csv"
+    },
+    "test": {
+      "n_images": 5814,
+      "n_patients": 3185,
+      "qwk": 0.7159509675171527,
+      "referable_auroc": 0.9117125765672569,
+      "image_id_sha256_16": "aebda03e4a482b4a",
+      "file": "finetune_app_converged_p2_class_balanced_seed42_test_predictions.csv"
+    }
+  },
+  "sanity_check": {
+    "expected_test_qwk": 0.7159509675171527,
+    "observed_test_qwk": 0.7159509675171527,
+    "expected_test_auroc": 0.9117124008736891,
+    "observed_test_auroc": 0.9117125765672569,
+    "tolerance": 0.0005,
+    "status": "MATCH"
+  }
+}

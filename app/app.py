@@ -74,7 +74,15 @@ CHECKPOINT_PATH = Path(__file__).resolve().parent / "release" / "best_model.pt"
 # MODEL_INFO_MD/MASTHEAD_HTML below currently do -- known, accepted debt),
 # the Instrument Card tab reads this file live, so IT stays honest even if
 # those older hardcoded strings are forgotten during a swap.
-RESULTS_JSON_PATH = PROJECT_ROOT / "results" / "finetune_app_p2_seed42.json"
+RESULTS_JSON_PATH = PROJECT_ROOT / "results" / "finetune_app_converged_p2_class_balanced_seed42.json"
+
+# Sample retinal images for quick demo/testing
+SAMPLES = [
+    str(Path(__file__).resolve().parent / "samples" / "sample1.jpg"),
+    str(Path(__file__).resolve().parent / "samples" / "sample2.jpg"),
+    str(Path(__file__).resolve().parent / "samples" / "sample3.jpg"),
+    str(Path(__file__).resolve().parent / "samples" / "sample4.jpg"),
+]
 # Phase 4 -- Quantum Lab tab source files. Both are written by their own
 # sweep scripts (src/experiments/qml_pqc.py, src/experiments/qcnn_no_cnn.py)
 # and read here as-is -- nothing below re-derives or recomputes a number.
@@ -94,13 +102,16 @@ DISCLAIMER = (
 
 MODEL_INFO_MD = (
     "**Model:** tf_efficientnet_b0 @ 384px, fine-tuned on the P2 (patient-level) split, seed 42.\n\n"
-    "**Real, measured test-set numbers** (from `results/finetune_app_p2_seed42.json`, "
-    "n=5,814 P2 test images, evaluated once): 5-class QWK **0.613**, referable-DR (grade "
-    "≥ 2) AUROC **0.872**.\n\n"
-    "**Honest caveat:** this run (15 epochs, ~19 min) lands in this project's own "
-    "\"undertrained or preprocessing bug\" acceptance band (0.40-0.70 QWK), not its "
-    "\"correct, proceed\" band (0.75-0.85) -- see MASTER_PLAN.md Part 10, Acceptance Test "
-    "10.1. It is a real, working model, not yet this pipeline's best possible one."
+    "**Real, measured test-set numbers** (from "
+    "`results/finetune_app_converged_p2_class_balanced_seed42.json`, n=5,814 P2 test "
+    "images, evaluated once): 5-class QWK **0.716**, referable-DR (grade ≥ 2) AUROC "
+    "**0.912**.\n\n"
+    "**Status:** this run (converged recipe -- 40 epochs, early-stop patience 8, best "
+    "epoch 32) lands in this project's own \"correct, proceed\" acceptance band "
+    "(0.70-0.85 QWK) -- see MASTER_PLAN.md Part 10, Acceptance Test 10.1. It replaces an "
+    "earlier 15-epoch checkpoint that scored 0.613 (undertrained band); see "
+    "`app/release/MODEL_CARD.md` for the full before/after and what the retrain was "
+    "expected to (and did) fix."
 )
 
 # =====================================================================
@@ -245,8 +256,8 @@ MASTHEAD_HTML = """
   <div class="fc-specstrip">
     <span>MODEL <b>tf_efficientnet_b0 @ 384px</b></span>
     <span>SPLIT <b>P2, patient-level</b></span>
-    <span>TEST QWK <b>0.613</b></span>
-    <span>REFERABLE-DR AUROC <b>0.872</b></span>
+    <span>TEST QWK <b>0.716</b></span>
+    <span>REFERABLE-DR AUROC <b>0.912</b></span>
     <span>CALIBRATION <b>uncalibrated</b></span>
     <span>STATUS <b>research prototype</b></span>
   </div>
@@ -254,16 +265,23 @@ MASTHEAD_HTML = """
 """
 
 
-# MASTER_PLAN.md Part 10, Acceptance Test 10.1 -- verbatim bands. The two
-# gaps (0.70-0.75 and 0.85-0.90) are deliberately left undefined there, so
-# they are rendered as neutral gaps below rather than invented labels.
+# MASTER_PLAN.md Part 10, Acceptance Test 10.1 -- bands taken from the
+# ACTUAL executable verdict logic in src/train/finetune_converged.py
+# (test_qwk < 0.40 broken / < 0.70 undertrained / <= 0.85 correct /
+# <= 0.95 suspicious / else leak), not from MASTER_PLAN.md's prose table.
+# An earlier version of this array copied the prose table literally, which
+# prints rounded boundaries that skip 0.70-0.75 and 0.85-0.90 and rendered
+# those as an "undefined band" gap here -- but the training script that
+# actually computes and prints this project's official verdict has no such
+# gap; it is continuous. That mismatch caused this Instrument Card to show
+# a genuinely-correct 0.7160 test QWK result as landing in a gap instead of
+# the CORRECT band, contradicting the training script's own printed
+# "correct -- proceed" verdict. Fixed to match the real, executable rule.
 ACCEPTANCE_BANDS = [
     (0.00, 0.40, "fc-gauge-zone-broken", "BROKEN", "check label alignment, LR, normalization"),
     (0.40, 0.70, "fc-gauge-zone-undertrained", "UNDERTRAINED", "undertrained or preprocessing bug"),
-    (0.70, 0.75, "fc-gauge-zone-gap", "", "(undefined band)"),
-    (0.75, 0.85, "fc-gauge-zone-correct", "CORRECT", "proceed"),
-    (0.85, 0.90, "fc-gauge-zone-gap", "", "(undefined band)"),
-    (0.90, 0.95, "fc-gauge-zone-suspicious", "SUSPICIOUS", "run Part 14 leakage check"),
+    (0.70, 0.85, "fc-gauge-zone-correct", "CORRECT", "proceed"),
+    (0.85, 0.95, "fc-gauge-zone-suspicious", "SUSPICIOUS", "run Part 14 leakage check"),
     (0.95, 1.00, "fc-gauge-zone-leak", "LEAK", "definitely a leak -- stop"),
 ]
 
@@ -788,9 +806,20 @@ def build_demo():
 
         with gr.Tabs():
             with gr.Tab("Single Eye"):
+                gr.Markdown(
+                    "**No retinal image available?** Use one of the samples below "
+                    "or upload your own to test the system.",
+                    elem_classes=["fc-both-eyes-note"],
+                )
+                with gr.Row():
+                    sample_dd = gr.Radio(
+                        ["Upload your own", "Sample 1", "Sample 2", "Sample 3", "Sample 4"],
+                        value="Sample 2",
+                        label="Select a sample image to test",
+                    )
                 with gr.Row():
                     with gr.Column():
-                        img_in = gr.Image(type="pil", label="Upload retinal fundus photograph")
+                        img_in = gr.Image(type="pil", value=SAMPLES[1], label="Upload retinal fundus photograph")
                         btn = gr.Button("Grade this image", variant="primary")
                     with gr.Column():
                         out_verdict = gr.HTML()
@@ -806,22 +835,28 @@ def build_demo():
                     "library combination — grading itself never depends on it.*",
                     elem_classes=["fc-cam-caption"],
                 )
+                sample_dd.change(update_single_sample, inputs=[sample_dd], outputs=[img_in])
             with gr.Tab("Both Eyes"):
                 gr.Markdown(
-                    "This project's Claim 3 finding: **mean-pooling both eyes' features before "
-                    "classifying significantly beat grading each eye separately and taking the "
-                    "worse grade** (QWK 0.617 vs 0.543, both-eye EyePACS patients, patient-level "
-                    "bootstrap CI [+0.046, +0.098] — excludes zero). This tab applies that same "
-                    "idea live, to this app's own fine-tuned model. **It has not been separately "
-                    "re-validated as its own number** — see predict_both_eyes()'s docstring in "
-                    "app.py for the honest distinction between 'same idea' and 'same number.' "
-                    "Both photos must be the same patient.",
+                    "**No retinal images available?** Use the samples below for left and right eyes, "
+                    "or upload your own. Both photos must be of the same patient.",
                     elem_classes=["fc-both-eyes-note"],
                 )
                 with gr.Row():
                     with gr.Column():
-                        img_left = gr.Image(type="pil", label="Left eye")
-                        img_right = gr.Image(type="pil", label="Right eye")
+                        sample_dd_left = gr.Radio(
+                            ["Upload your own", "Sample 1", "Sample 2", "Sample 3", "Sample 4"],
+                            value="Sample 2",
+                            label="Left eye sample",
+                        )
+                        img_left = gr.Image(type="pil", value=SAMPLES[1], label="Left eye")
+                    with gr.Column():
+                        sample_dd_right = gr.Radio(
+                            ["Upload your own", "Sample 1", "Sample 2", "Sample 3", "Sample 4"],
+                            value="Sample 2",
+                            label="Right eye sample",
+                        )
+                        img_right = gr.Image(type="pil", value=SAMPLES[1], label="Right eye")
                         btn_both = gr.Button("Grade both eyes", variant="primary")
                     with gr.Column():
                         out_verdict_b = gr.HTML()
@@ -831,6 +866,8 @@ def build_demo():
                 with gr.Row():
                     out_left_proc = gr.Image(label="Left eye (preprocessed)", interactive=False)
                     out_right_proc = gr.Image(label="Right eye (preprocessed)", interactive=False)
+                sample_dd_left.change(update_single_sample, inputs=[sample_dd_left], outputs=[img_left])
+                sample_dd_right.change(update_single_sample, inputs=[sample_dd_right], outputs=[img_right])
 
             with gr.Tab("Instrument Card"):
                 gr.HTML(build_instrument_card_html())
@@ -870,6 +907,24 @@ def build_demo():
 
         gr.Markdown("---\n" + MODEL_INFO_MD)
     return demo, fundus_theme
+
+
+def update_single_sample(selection):
+    """Return the sample file path for the selected option."""
+    if selection is None or selection == "Upload your own":
+        return None
+    idx = int(selection.split()[-1]) - 1
+    return SAMPLES[idx]
+
+
+def update_both_samples(selection_left, selection_right):
+    """Return sample file paths for left and right eye selection."""
+    def resolve(sel):
+        if sel is None or sel == "Upload your own":
+            return None
+        idx = int(sel.split()[-1]) - 1
+        return SAMPLES[idx]
+    return resolve(selection_left), resolve(selection_right)
 
 
 if __name__ == "__main__":

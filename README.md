@@ -6,7 +6,7 @@ The answer, measured directly on 17,563 patients: a **0.8545 inter-eye quadratic
 
 Everything below — the leakage measurement, the final screening model, the both-eyes ensembling method, and two honestly-negative quantum machine learning experiments — was measured with pre-registered acceptance tests, patient-level bootstrap confidence intervals, and one rule enforced throughout: **no claim ships without a check that could have failed it.**
 
-**[Live demo →](#) &nbsp;·&nbsp; [Full methodology (`MASTER_PLAN.md`)](MASTER_PLAN.md) &nbsp;·&nbsp; [Model card](app/release/MODEL_CARD.md)**
+**[Live demo →](https://huggingface.co/spaces/vishal1829/fundus-console) &nbsp;·&nbsp; [Full methodology (`MASTER_PLAN.md`)](MASTER_PLAN.md) &nbsp;·&nbsp; [Model card](app/release/MODEL_CARD.md)**
 
 ---
 
@@ -18,7 +18,7 @@ Everything below — the leakage measurement, the final screening model, the bot
 | Does grading both eyes together beat grading them separately? | **Yes, significantly.** Mean-pooling both eyes' features beats per-eye-then-max grading: QWK 0.617 vs 0.543 (paired bootstrap CI [+0.046, +0.098], excludes 0). | `results/claim3_both_eyes_effnetb0_384.json` |
 | Does a quantum classifier head beat a classical one on the same features? | **No.** Best PQC config (8 qubits, 3 entangling layers) scores QWK 0.109 vs. 0.346/0.264 for classical heads on the same matched data — significantly worse. | `results/qml_pqc.json` |
 | Does a fully-quantum, no-CNN model work at all on this task? | **Inconclusive at best.** Every swept config (4–8 qubits) converges to QWK 0.000 — a likely barren-plateau/vanishing-gradient failure, indistinguishable from an equally crippled classical baseline on the same heavily-downsampled pixels. | `results/qcnn_no_cnn_pixels.json` |
-| Is the deployed screening model any good? | **Real, but honestly undertrained.** Test QWK 0.613, referable-DR AUROC 0.872 — inside this project's own pre-registered "undertrained" band (0.40–0.70), not its "correct, proceed" band (0.75–0.85). Reported as such, not rounded up. | `results/finetune_app_p2_seed42.json`, `app/release/MODEL_CARD.md` |
+| Is the deployed screening model any good? | **Yes — inside this project's own "correct, proceed" band.** Test QWK 0.716, referable-DR AUROC 0.912, after retraining with the converged recipe (40 epochs, early-stop patience 8) — up from an earlier 15-epoch checkpoint's QWK 0.613 ("undertrained" band). Tradeoff: grade-1 recall dropped (0.461→0.161), reported as an open caveat, not smoothed over. | `results/finetune_app_converged_p2_class_balanced_seed42.json`, `app/release/MODEL_CARD.md` |
 
 Every number above has a patient-level bootstrap confidence interval behind it in the linked file — none of this is a bare point estimate.
 
@@ -85,8 +85,8 @@ mini/
 ## Reproducing this
 
 ```powershell
-git clone https://github.com/<your-username>/two-eyes-one-patient.git
-cd two-eyes-one-patient
+git clone https://github.com/vishalyl/diabetic-retinopathy-detection.git
+cd diabetic-retinopathy-detection
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
@@ -107,15 +107,16 @@ This repo ships **manifests, splits, and results — not raw images.** EyePACS a
 Point `configs/paths.yaml` at wherever you put them, then run `src/data/build_cache.py` to reproduce the processed image cache the manifests reference.
 
 ### Model access
-The deployed checkpoint (`app/release/best_model.pt`, ~16 MB) is hosted with the [live demo](#) rather than committed to this repo. To run the app locally, download it from the demo Space and drop it in `app/release/`, or train your own with `src/train/finetune.py --config configs/finetune_app.yaml --split p2 --seed 42`.
+The deployed checkpoint (`app/release/best_model.pt`, ~16 MB) is hosted with the [live demo](https://huggingface.co/spaces/vishal1829/fundus-console) rather than committed to this repo. To run the app locally, download it from the demo Space and drop it in `app/release/`, or train your own with `src/train/finetune_converged.py --config configs/finetune_app_converged.yaml --split p2 --seed 42` (the recipe the deployed checkpoint was actually trained with — see `app/release/MODEL_CARD.md`).
 
 ---
 
 ## Honest limitations
 This project's standing rule is to report a negative or undertrained result plainly rather than reframe it. In that spirit:
-- The deployed checkpoint's test QWK (0.613) sits in this project's own "undertrained or preprocessing bug" acceptance band, not its "correct, proceed" band — see `app/release/MODEL_CARD.md` for the full breakdown and what a converged retrain is expected to do about it.
+- The deployed checkpoint's test QWK (0.716) sits in this project's own "correct, proceed" acceptance band, but the retrain that got it there also dropped grade-1 (Mild NPDR) recall substantially (0.461→0.161) — an unexplained tradeoff, not yet investigated, see `app/release/MODEL_CARD.md`.
+- Acceptance Test 12.1's app-vs-eval prediction-mismatch rate dropped from 18/100 (prior, undertrained checkpoint) to 8/100 on this one — confirmed by re-running the test, not assumed. Roughly half, not eliminated: the remaining 8 mismatches show the same signature (0 EXIF-related, all pixel MAE ≤1.2/255) as before, just at reduced scale.
 - Confidence shown in the app is raw, **uncalibrated** softmax output — no temperature scaling or reject option has been fitted yet.
-- Grade-1 (Mild NPDR) recall is limited by design: it's defined by ~10px microaneurysms that don't survive downsampling to 384px, a resolution limitation, not a bug.
+- Grade-1 (Mild NPDR) recall is also limited by design at any convergence level: it's defined by ~10px microaneurysms that don't survive downsampling to 384px, a resolution limitation, not a bug.
 - The Both Eyes tab's own accuracy hasn't been independently re-measured — see its in-app caveat.
 
 ## References

@@ -36,8 +36,9 @@ freeze_backbone_epochs: 2
 sampler: class_balanced        # default if --sampler is not passed on the command line
 early_stop_metric: val_qwk     # documentation only -- always val_qwk
 early_stop_patience: 8         # CHANGED from 4 (finetune_converged.yaml's change)
-num_workers: 6
+num_workers: 0                 # TEMPORARILY dropped from 6 -- see the "paging file too small" note below
 pin_memory: true
-persistent_workers: true
+persistent_workers: true       # finetune_converged.py itself guards this: persistent_workers only
+                                # actually applies when num_workers > 0, so this line is inert right now
 augment: true
 grad_checkpointing: false      # OOM escalation option -- flip to true if 40-epoch/384px run OOMs

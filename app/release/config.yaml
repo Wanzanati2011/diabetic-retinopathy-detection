@@ -1,32 +1,37 @@
 # Release config for app/app.py -- MASTER_PLAN.md Part 12.1.
 # This is a RECORD of the exact config the deployed checkpoint was trained
-# with (copied from results/finetune_app_p2_seed42.json's "config" field,
-# not hand-retyped), plus provenance fields the training script doesn't
-# itself write into a standalone file. app/app.py does NOT read this file
-# at runtime -- it reads the equivalent config dict straight out of the
-# checkpoint (best_model.pt's own "config" key), which is the actual
-# source of truth. This file exists for human/reviewer reference, per
-# MASTER_PLAN.md Part 12.1's release-bundle layout.
+# with (copied from results/finetune_app_converged_p2_class_balanced_seed42.json's
+# "config" field, not hand-retyped), plus provenance fields the training
+# script doesn't itself write into a standalone file. app/app.py does NOT
+# read this file at runtime -- it reads the equivalent config dict straight
+# out of the checkpoint (best_model.pt's own "config" key), which is the
+# actual source of truth. This file exists for human/reviewer reference,
+# per MASTER_PLAN.md Part 12.1's release-bundle layout.
+#
+# SUPERSEDES the original finetune_app_p2_seed42 checkpoint (15 epochs,
+# test_qwk 0.613, "undertrained" band) with the converged retrain (40
+# epochs, early-stop patience 8, test_qwk 0.716, "correct -- proceed"
+# band) -- see app/release/MODEL_CARD.md for the full before/after.
 
-checkpoint_source: checkpoints/finetune_app_p2_seed42/best.pt
-training_script: src/train/finetune.py
-training_config_file: configs/finetune_app.yaml
-result_file: results/finetune_app_p2_seed42.json
+checkpoint_source: checkpoints/finetune_app_converged_p2_class_balanced_seed42/best.pt
+training_script: src/train/finetune_converged.py
+training_config_file: configs/finetune_app_converged.yaml
+result_file: results/finetune_app_converged_p2_class_balanced_seed42.json
 
 model: tf_efficientnet_b0
 image_size: 384
 split: p2
 seed: 42
 sampler: class_balanced
-best_epoch: 11
-best_val_qwk: 0.623996229639783
-test_qwk: 0.6128464866600856
-referable_dr_auroc: 0.8715450738334649
+best_epoch: 32
+best_val_qwk: 0.7331276644121583
+test_qwk: 0.7159509675171527
+referable_dr_auroc: 0.9117124008736891
 n_train: 27123
 n_val: 5843
 n_test: 5814
 
-acceptance_test_10_1_verdict: "undertrained or preprocessing bug (test_qwk 0.61 is in the 0.40-0.70 band, not the 0.75-0.85 band)"
+acceptance_test_10_1_verdict: "correct -- proceed (test_qwk 0.716 is in the 0.70-0.85 band, per src/train/finetune_converged.py's own verdict logic and the training run's own printed output)"
 calibration_status: "NOT DONE -- MASTER_PLAN.md Part 7 (temperature scaling + reject threshold) has not been run for this checkpoint. app/app.py shows raw, uncalibrated softmax confidence and has no reject-option gating."
 gradcam_status: "IMPLEMENTED (Phase 2) -- app/app.py's compute_gradcam_overlay() runs Grad-CAM on the backbone's conv_head for the predicted class. Requires `pip install grad-cam`; fails gracefully (panel blank, grading unaffected) if unavailable or version-mismatched -- not verified against every pytorch-grad-cam version."
-known_preprocessing_bug_fixed: "EXIF orientation handling added to to_model_input() (ImageOps.exif_transpose(), matching cv2.imread()'s auto-rotation used when the training/eval cache was built) -- worth keeping for real EXIF-rotated uploads, but INVESTIGATED AND RULED OUT as the cause of Acceptance Test 12.1's ~18% grade-mismatch rate: 0/18 flipped images carry a non-default EXIF tag, and pixel MAE between the two pipelines' processed images is only 0.8-1.2/255 (ordinary JPEG-decoder noise, not a different crop). Conclusion: NOT a preprocessing bug -- this checkpoint (test_qwk 0.613, undertrained band) has a decision boundary narrow enough that sub-1/255 noise flips ~18% of borderline test images to an adjacent grade. See MODEL_CARD.md 'What Acceptance Test 12.1 actually found' for the full writeup. Expected real fix: retrain with src/train/finetune_converged.py for wider decision margins."
+known_preprocessing_bug_fixed: "EXIF orientation handling added to to_model_input() (ImageOps.exif_transpose(), matching cv2.imread()'s auto-rotation used when the training/eval cache was built) -- worth keeping for real EXIF-rotated uploads, but INVESTIGATED AND RULED OUT as the cause of Acceptance Test 12.1's ~18% grade-mismatch rate on the PRIOR (0.613, undertrained) checkpoint: 0/18 flipped images carried a non-default EXIF tag, and pixel MAE between the two pipelines' processed images was only 0.8-1.2/255 (ordinary JPEG-decoder noise, not a different crop). Conclusion at the time: NOT a preprocessing bug -- the prior checkpoint's narrow decision margin (undertrained) was flipping borderline cases on sub-1/255 noise. This checkpoint is the converged retrain done specifically to fix that; Acceptance Test 12.1 has not yet been re-run against it -- see MODEL_CARD.md's 'What Acceptance Test 12.1 found, and whether the retrain fixed it' section for the current status of that re-check."
