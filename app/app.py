@@ -537,6 +537,82 @@ PER_GRADE_CONTEXT = context.load_per_grade_context()
 GRADE1_RECALL = context.load_grade1_recall()
 
 
+def _check_optional_dep(module_name):
+    import importlib.util
+    return importlib.util.find_spec(module_name) is not None
+
+
+def build_status_report():
+    """B7: system status -- model sha, calibration/gate state, optional-
+    dependency availability, Gradio version, and any missing METRICS
+    source file. Same block is printed to the console at startup and
+    rendered as a footer disclosure."""
+    import gradio as gr_version_probe
+
+    gradcam_available = _check_optional_dep("pytorch_grad_cam")
+    pdf_available = _check_optional_dep("fpdf")
+
+    metrics_files = {
+        "deployed-model results": RESULTS_JSON_PATH,
+        "calibration (thresholds.json)": D.THRESHOLDS_PATH,
+        "calibration (calibration_reject.json)": PROJECT_ROOT / "results" / "calibration_reject.json",
+        "test predictions CSV": context.TEST_CSV_PATH,
+        "grade1_diagnosis.json": context.GRADE1_JSON_PATH,
+        "claim3_decomposed (384px)": context.CLAIM3_DECOMPOSED_384_PATH,
+        "qml_pqc.json": QML_JSON_PATH,
+        "qcnn_no_cnn_pixels.json": QCNN_JSON_PATH,
+    }
+    missing = [name for name, path in metrics_files.items() if not Path(path).exists()]
+
+    return {
+        "model_sha12": MODEL_SHA12,
+        "calibration_active": CALIBRATION_ACTIVE,
+        "gates_active": CALIBRATION_ACTIVE,  # the uncertainty/referral gates ride the same flag
+        "gradcam_available": gradcam_available,
+        "pdf_export_available": pdf_available,
+        "gradio_version": gr_version_probe.__version__,
+        "metrics_files_missing": missing,
+    }
+
+
+def _status_mark(ok):
+    return "✓" if ok else "✗"
+
+
+def build_status_panel_html():
+    s = build_status_report()
+    missing_str = ", ".join(s["metrics_files_missing"]) if s["metrics_files_missing"] else "none"
+    return (
+        '<div class="fc-card">'
+        '<span class="fc-eyebrow">System status</span>'
+        '<ul class="fc-steps" style="list-style:none;padding:0;margin:0;">'
+        f'<li>model sha12: <b>{s["model_sha12"]}</b></li>'
+        f'<li>calibration active: <b>{_status_mark(s["calibration_active"])}</b></li>'
+        f'<li>gates active: <b>{_status_mark(s["gates_active"])}</b></li>'
+        f'<li>Grad-CAM available: <b>{_status_mark(s["gradcam_available"])}</b></li>'
+        f'<li>PDF export available: <b>{_status_mark(s["pdf_export_available"])}</b></li>'
+        f'<li>Gradio version: <b>{s["gradio_version"]}</b></li>'
+        f'<li>METRICS files missing: <b>{missing_str}</b></li>'
+        '</ul></div>'
+    )
+
+
+def print_status_report():
+    s = build_status_report()
+    print("=== System status ===")
+    print(f"  model sha12: {s['model_sha12']}")
+    print(f"  calibration active: {s['calibration_active']}")
+    print(f"  gates active: {s['gates_active']}")
+    print(f"  Grad-CAM available: {s['gradcam_available']}")
+    print(f"  PDF export available: {s['pdf_export_available']}")
+    print(f"  Gradio version: {s['gradio_version']}")
+    print(f"  METRICS files missing: {s['metrics_files_missing'] or 'none'}")
+    print("======================")
+
+
+print_status_report()
+
+
 def to_model_input(pil_image, image_size=None):
     """Reproduces the EXACT eval-time (augment=False) preprocessing path used
     by src/train/finetune_converged.py's FineTuneDataset:
@@ -1027,6 +1103,8 @@ def build_demo():
         )
 
         gr.Markdown("---\n" + MODEL_INFO_MD)
+        with gr.Accordion("System status", open=False):
+            gr.HTML(build_status_panel_html())
     return demo, fundus_theme
 
 
