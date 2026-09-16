@@ -66,11 +66,12 @@ def test_referral_logic_matches_master_plan_rule():
 def test_checkpoint_missing_raises_clear_error(tmp_path, monkeypatch):
     """If someone runs the app before copying the checkpoint into
     app/release/, they should get a clear instruction, not a stack trace
-    from deep inside torch.load()."""
-    import app.app as app_module
-    monkeypatch.setattr(app_module, "CHECKPOINT_PATH", tmp_path / "does_not_exist.pt")
+    from deep inside torch.load(). B3: load_model()/CHECKPOINT_PATH live in
+    app.core.model now, not app.app -- patch and call them there."""
+    import app.core.model as model_module
+    monkeypatch.setattr(model_module, "CHECKPOINT_PATH", tmp_path / "does_not_exist.pt")
     with pytest.raises(FileNotFoundError, match="Copy the trained checkpoint"):
-        app_module.load_model()
+        model_module.load_model()
 
 
 # ---------------------------------------------------------------------
@@ -91,7 +92,11 @@ if not CHECKPOINT_PATH.exists():
     )
 
 from PIL import Image  # noqa: E402
-from app.app import to_model_input, MODEL, TRAIN_IMAGE_SIZE  # noqa: E402
+# B3: to_model_input/MODEL/TRAIN_IMAGE_SIZE moved to app.core.inference /
+# app.core.model. app.app still re-exports them (it imports these names at
+# module level), but import from their canonical home per B3's instruction.
+from app.core.inference import to_model_input  # noqa: E402
+from app.core.model import MODEL, TRAIN_IMAGE_SIZE  # noqa: E402
 
 
 def _exif_orientation(path):
@@ -137,7 +142,7 @@ def _eval_pipeline_result(cached_jpeg_path):
     cached/preprocessed image, normalize, forward pass. This is what
     finetune_converged.py's evaluate() actually did to produce the numbers
     in results/finetune_app_p2_seed42.json. Returns (grade, processed_rgb)."""
-    from app.app import IMAGENET_MEAN, IMAGENET_STD
+    from app.core.inference import IMAGENET_MEAN, IMAGENET_STD
 
     with Image.open(cached_jpeg_path) as im:
         im = im.convert("RGB")
@@ -219,7 +224,7 @@ def test_app_pipeline_matches_eval_pipeline_on_real_test_images():
 # weaken it.
 # ---------------------------------------------------------------------
 def test_decision_level_acceptance_12_1():
-    from app.app import CALIBRATION_ACTIVE, THRESHOLDS
+    from app.core.model import CALIBRATION_ACTIVE, THRESHOLDS
     from app.core import decision as D
 
     test_csv_path = (PROJECT_ROOT / "results" /

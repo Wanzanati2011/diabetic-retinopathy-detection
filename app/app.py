@@ -39,13 +39,13 @@ WHAT THIS APP IS, HONESTLY:
     exact installed version, so check the panel actually renders.
 
 PREPROCESSING FIDELITY (the single most common way an app like this quietly
-breaks): this file imports preprocess() from src/data/preprocess.py --
-THE SAME FUNCTION used by build_cache.py to build the training/eval image
-cache -- rather than reimplementing crop/resize/pad logic here. The only
-extra step is converting Gradio's PIL RGB image to BGR before calling it,
-because preprocess() expects BGR input (matching cv2.imread's convention,
-which is what build_cache.py actually feeds it). See
-tests/test_app.py (Acceptance Test 12.1) for the check that this
+breaks): app/core/inference.py's to_model_input() imports preprocess() from
+src/data/preprocess.py -- THE SAME FUNCTION used by build_cache.py to build
+the training/eval image cache -- rather than reimplementing crop/resize/pad
+logic there. The only extra step is converting Gradio's PIL RGB image to
+BGR before calling it, because preprocess() expects BGR input (matching
+cv2.imread's convention, which is what build_cache.py actually feeds it).
+See tests/test_app.py (Acceptance Test 12.1) for the check that this
 reproduces the evaluation pipeline's predictions on real test images.
 
 Usage (from the project root, venv active):
@@ -58,31 +58,32 @@ import sys
 import tempfile
 from pathlib import Path
 
-import cv2
 import numpy as np
 import torch
-from PIL import ImageOps
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.data.preprocess import preprocess  # noqa: E402 -- THE SAME FUNCTION USED IN TRAINING
 from app.core import decision as D  # noqa: E402
 from app.core.session import make_log_entry as make_log_entry_v2  # noqa: E402
 from app.report.pdf import build_pdf_export as build_pdf_export_v2  # noqa: E402
 from app.data import context  # noqa: E402
 from app.core import quality as Q  # noqa: E402
 from app.data import metrics as M  # noqa: E402
+# B3: model loading, preprocessing/inference, and Grad-CAM moved out of
+# app.py into app/core/ -- none of those modules import Gradio.
+from app.core.model import (  # noqa: E402
+    CHECKPOINT_PATH, MODEL, TRAIN_IMAGE_SIZE, CALIBRATION_ACTIVE, THRESHOLDS,
+    MODEL_SHA12, load_model,
+)
+from app.core.inference import to_model_input, pooled_embedding  # noqa: E402
+from app.core.gradcam import compute_gradcam_overlay  # noqa: E402
 
 METRICS = M.load_metrics()
 
 GRADE_NAMES = ["No DR", "Mild NPDR", "Moderate NPDR", "Severe NPDR", "Proliferative DR"]
-IMAGENET_MEAN = torch.tensor((0.485, 0.456, 0.406)).view(3, 1, 1)
-IMAGENET_STD = torch.tensor((0.229, 0.224, 0.225)).view(3, 1, 1)
-DEFAULT_IMAGE_SIZE = 384  # overridden by the checkpoint's own recorded config, see load_model()
 
-CHECKPOINT_PATH = Path(__file__).resolve().parent / "release" / "best_model.pt"
 # B2: the checkpoint file itself only carries val_qwk (see load_model()'s
 # log line), not the test-set numbers, which live in the training script's
 # separate results/{run_name}.json. Every place that number is shown
@@ -150,145 +151,9 @@ def build_model_info_md(m):
 # and blue/teal-vs-amber stays distinguishable for both deuteranopia and
 # protanopia where red-vs-green does not.
 # =====================================================================
-FUNDUS_CSS = """
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap');
-
-/* Committed to ONE explicit dark "instrument console" palette, deliberately --
-   not a light/dark switch. Gradio decides its own light/dark mode through a
-   mechanism that did not line up with a plain @media(prefers-color-scheme)
-   check here (that's the bug from the last screenshot: light-theme text
-   landing on Gradio's dark chrome, and vice versa in the disclaimer box).
-   Rather than chase Gradio's internal theme-state signal version-by-version,
-   every custom block below sets its OWN background AND text color together
-   from this one token set, so it is legible regardless of what Gradio's
-   native components are doing around it. */
-:root {
-  --fc-bg: #131311; --fc-surface: #1D1B17; --fc-border: #38342D;
-  --fc-text: #ECE6DA; --fc-text-muted: #A79D8C;
-  --fc-teal: #3FC3BC; --fc-teal-soft: #17302D;
-  --fc-amber: #E8A33D; --fc-amber-soft: #392A15;
-  --fc-uncertain: #A99DDF; --fc-uncertain-soft: #292440;
-  --fc-ungradable: #A79D8C; --fc-ungradable-soft: #2A2823;
-}
-
-.fc-masthead {
-  background: var(--fc-surface); border: 1px solid var(--fc-border); border-radius: 12px;
-  padding: 20px 22px; margin-bottom: 4px;
-}
-.fc-kicker {
-  font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; letter-spacing: 0.09em;
-  text-transform: uppercase; color: var(--fc-teal); display: block; margin-bottom: 8px;
-}
-.fc-title {
-  font-family: "Fraunces", ui-serif, Georgia, serif; font-weight: 560; font-size: 2.1rem;
-  margin: 0 0 16px; color: var(--fc-text);
-}
-.fc-specstrip { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
-.fc-specstrip span {
-  font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; color: var(--fc-text-muted);
-  background: var(--fc-bg); border: 1px solid var(--fc-border); border-radius: 4px; padding: 4px 9px;
-}
-.fc-specstrip b { color: var(--fc-text); font-weight: 500; }
-
-.fc-disclaimer {
-  background: var(--fc-surface) !important; color: var(--fc-text) !important;
-  border-radius: 8px; padding: 14px 16px !important; border: 1px solid var(--fc-uncertain);
-}
-.fc-disclaimer p, .fc-disclaimer strong { color: var(--fc-text) !important; }
-
-.fc-card {
-  background: var(--fc-surface); border: 1px solid var(--fc-border); border-radius: 10px;
-  padding: 14px 16px; margin-bottom: 4px;
-}
-.fc-eyebrow {
-  display: block; font-family: "IBM Plex Mono", monospace; font-size: 0.66rem; letter-spacing: 0.07em;
-  text-transform: uppercase; color: var(--fc-text-muted); margin-bottom: 6px;
-}
-.fc-grade { font-family: "Fraunces", serif; font-weight: 560; font-size: 1.5rem; color: var(--fc-text); line-height: 1.1; }
-.fc-gradename { color: var(--fc-text-muted); font-size: 0.95rem; margin-top: 2px; }
-
-.fc-badge {
-  display: inline-flex; align-items: center; font-family: "IBM Plex Mono", monospace;
-  font-size: 0.78rem; letter-spacing: 0.02em; border-radius: 5px; padding: 5px 10px;
-}
-.fc-badge-refer { background: var(--fc-amber-soft); color: var(--fc-amber); }
-.fc-badge-routine { background: var(--fc-teal-soft); color: var(--fc-teal); }
-.fc-badge-uncertain { background: var(--fc-uncertain-soft); color: var(--fc-uncertain); }
-.fc-badge-ungradable { background: var(--fc-ungradable-soft); color: var(--fc-ungradable); }
-.fc-outcome-note {
-  font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; color: var(--fc-text-muted);
-  margin-top: 8px; line-height: 1.5;
-}
-.fc-inactive-banner {
-  border: 1px solid var(--fc-amber);
-}
-.fc-inactive-banner p {
-  color: var(--fc-amber); font-family: "IBM Plex Mono", monospace; font-size: 0.72rem;
-  margin: 0 0 10px; line-height: 1.5;
-}
-
-.fc-meter-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-.fc-uncal { font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; color: var(--fc-uncertain); }
-.fc-meter { height: 8px; background: var(--fc-border); border-radius: 4px; overflow: hidden; }
-.fc-meter > i { display: block; height: 100%; background: var(--fc-uncertain); border-radius: 4px 0 0 4px; }
-
-.fc-empty { color: var(--fc-text-muted); font-style: italic; }
-
-.fc-scanning { display: flex; align-items: center; gap: 18px; }
-.fc-scan-fundus {
-  width: 56px; height: 56px; border-radius: 50%; flex: none; position: relative; overflow: hidden;
-  background: radial-gradient(circle at 38% 34%, #E8A33D 0%, #C9762A 32%, #7A3A16 72%, #401E0D 100%);
-  box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-}
-.fc-scan-sweep {
-  position: absolute; inset: 0;
-  background: linear-gradient(180deg, transparent 0%, rgba(63,195,188,0.65) 48%, transparent 56%);
-  animation: fc-sweep 1.4s ease-in-out infinite;
-}
-@keyframes fc-sweep { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
-@media (prefers-reduced-motion: reduce) { .fc-scan-sweep { animation: none; top: 44%; } }
-.fc-steps { list-style: none; margin: 0; padding: 0; font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; }
-.fc-steps li { padding: 3px 0; color: var(--fc-text-muted); }
-.fc-steps li.fc-step-done { color: var(--fc-teal); }
-.fc-steps li.fc-step-active { color: var(--fc-text); }
-
-.fc-cam-caption { font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; color: var(--fc-text-muted); margin-top: 4px; }
-
-/* Instrument Card -- MASTER_PLAN.md Part 10, Acceptance Test 10.1's own
-   QWK bands, rendered as a gauge instead of a table, with a marker showing
-   where THIS deployed checkpoint actually landed. */
-.fc-gauge-wrap { margin: 10px 0 18px; }
-.fc-gauge-track {
-  position: relative; height: 34px; border-radius: 6px; overflow: visible;
-  display: flex; border: 1px solid var(--fc-border);
-}
-.fc-gauge-zone {
-  height: 100%; display: flex; align-items: center; justify-content: center;
-  font-family: "IBM Plex Mono", monospace; font-size: 0.62rem; letter-spacing: 0.03em;
-  color: var(--fc-text-muted); border-right: 1px solid var(--fc-bg); white-space: nowrap; overflow: hidden;
-}
-.fc-gauge-zone:last-child { border-right: none; }
-.fc-gauge-zone-broken { background: #3A1414; }
-.fc-gauge-zone-undertrained { background: var(--fc-amber-soft); color: var(--fc-amber); }
-.fc-gauge-zone-gap { background: var(--fc-bg); }
-.fc-gauge-zone-correct { background: var(--fc-teal-soft); color: var(--fc-teal); }
-.fc-gauge-zone-suspicious { background: var(--fc-uncertain-soft); color: var(--fc-uncertain); }
-.fc-gauge-zone-leak { background: #3A1414; color: #E8746A; }
-.fc-gauge-marker {
-  position: absolute; top: -9px; transform: translateX(-50%); text-align: center;
-  font-family: "IBM Plex Mono", monospace; font-size: 0.68rem; color: var(--fc-text);
-}
-.fc-gauge-marker .fc-gauge-arrow { color: var(--fc-text); font-size: 0.8rem; line-height: 1; }
-.fc-gauge-axis { display: flex; justify-content: space-between; font-family: "IBM Plex Mono", monospace;
-  font-size: 0.62rem; color: var(--fc-text-muted); margin-top: 3px; }
-.fc-verdict-line { font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; margin-top: 10px; }
-
-.fc-both-eyes-note {
-  font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; color: var(--fc-text-muted);
-  background: var(--fc-surface); border: 1px solid var(--fc-border); border-radius: 8px;
-  padding: 10px 12px; margin-bottom: 8px; line-height: 1.5;
-}
-"""
+# B3: moved to app/render/tokens.css (design tokens live in one CSS file,
+# not a Python triple-quoted string) -- read once at import time.
+FUNDUS_CSS = (Path(__file__).resolve().parent / "render" / "tokens.css").read_text(encoding="utf-8")
 
 MASTHEAD_HTML = """
 <div class="fc-masthead">
@@ -508,43 +373,9 @@ def build_quantum_lab_html():
     return intro + track1 + track2
 
 
-def load_model():
-    if not CHECKPOINT_PATH.exists():
-        raise FileNotFoundError(
-            f"{CHECKPOINT_PATH} not found. Copy the trained checkpoint there first, e.g. from "
-            f"the project root:\n"
-            f'  Copy-Item "checkpoints\\finetune_app_p2_seed42\\best.pt" "app\\release\\best_model.pt"'
-        )
-    import timm
-
-    ckpt = torch.load(CHECKPOINT_PATH, map_location="cpu")
-    cfg = ckpt.get("config", {}) or {}
-    backbone_name = cfg.get("model", "tf_efficientnet_b0")
-    image_size = cfg.get("image_size", DEFAULT_IMAGE_SIZE)
-
-    model = timm.create_model(backbone_name, pretrained=False, num_classes=5)
-    model.load_state_dict(ckpt["model_state_dict"])
-    model.eval()
-
-    val_qwk = ckpt.get("val_qwk")
-    val_qwk_str = f"{val_qwk:.4f}" if val_qwk is not None else "unknown"
-    print(f"Loaded {backbone_name} @ {image_size}px from {CHECKPOINT_PATH.name} "
-          f"(split={ckpt.get('split')}, seed={ckpt.get('seed')}, "
-          f"val_qwk={val_qwk_str} at epoch {ckpt.get('epoch')})")
-    return model, image_size
-
-
-MODEL, TRAIN_IMAGE_SIZE = load_model()
-
-# A1: calibration integrity check, once at startup. If the checkpoint hash,
-# thresholds file, or acceptance-test verdict don't check out, the app
-# falls back to raw uncalibrated confidence and says so on screen -- it
-# never fakes a calibrated number it hasn't actually verified.
-CALIBRATION_ACTIVE, THRESHOLDS, _CALIBRATION_INACTIVE_REASON = D.check_integrity()
-MODEL_SHA12 = D.checkpoint_sha256()[:12] if CHECKPOINT_PATH.exists() else "unknown"
-print(f"Calibration active: {CALIBRATION_ACTIVE}"
-      f"{'' if CALIBRATION_ACTIVE else f' (reason: {_CALIBRATION_INACTIVE_REASON})'}"
-      f"  model sha12={MODEL_SHA12}")
+# B3: load_model()/MODEL/TRAIN_IMAGE_SIZE/CALIBRATION_ACTIVE/THRESHOLDS/
+# MODEL_SHA12 all come from app.core.model (imported above) -- loaded and
+# integrity-checked exactly once, at that module's import time.
 MASTHEAD_HTML = (
     MASTHEAD_HTML
     .replace("{{CALIBRATION_STATUS}}", "calibrated" if CALIBRATION_ACTIVE else "uncalibrated fallback")
@@ -634,66 +465,9 @@ def print_status_report():
 print_status_report()
 
 
-def to_model_input(pil_image, image_size=None):
-    """Reproduces the EXACT eval-time (augment=False) preprocessing path used
-    by src/train/finetune_converged.py's FineTuneDataset:
-      1. preprocess() (crop retinal circle, resize, pad to square) -- the
-         SAME function build_cache.py used to build the training/eval cache.
-      2. uint8 RGB -> float tensor in [0, 1] -> ImageNet normalize.
-    No augmentation (flip/rotate/brightness jitter) -- that's train-only.
-
-    Returns (model_input_tensor[1,3,H,W], processed_rgb_uint8_array) -- the
-    second is handy for a debug preview or a future Grad-CAM overlay.
-    """
-    size = image_size or TRAIN_IMAGE_SIZE
-    # cv2.imread() (what build_cache.py used to build the training/eval cache)
-    # auto-applies EXIF orientation for JPEG/TIFF sources; PIL's Image.open()
-    # does NOT -- it returns the raw, un-rotated pixel grid unless you call
-    # exif_transpose() yourself. Skipping this was a real bug (caught by
-    # tests/test_app.py's Acceptance Test 12.1, not assumed): for any source
-    # photo with a non-default EXIF Orientation tag, preprocess()'s "find the
-    # largest bright region" crop-detection step found a DIFFERENT region on
-    # the differently-rotated pixel grid than training saw, so the model got
-    # a genuinely different crop, not just JPEG rounding noise.
-    pil_image = ImageOps.exif_transpose(pil_image)
-    rgb = np.array(pil_image.convert("RGB"))
-    bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)  # preprocess() expects BGR, matching
-                                                  # cv2.imread()'s convention in build_cache.py
-    processed_rgb = preprocess(bgr, size=size)   # returns uint8 RGB, same as the training cache
-    arr = torch.from_numpy(processed_rgb).permute(2, 0, 1).float() / 255.0
-    arr = (arr - IMAGENET_MEAN) / IMAGENET_STD
-    return arr.unsqueeze(0), processed_rgb
-
-
-def compute_gradcam_overlay(x, processed_rgb, grade):
-    """Grad-CAM (Selvaraju et al. 2017) on the backbone's last conv block
-    (conv_head -- the standard target layer for a timm EfficientNet, the
-    last spatial feature map before global pooling), for the PREDICTED
-    class. Needs gradients, so this runs in a normal (non-no_grad) context,
-    as a second, short forward+backward pass purely for attribution --
-    it never influences the grade itself, which was already decided under
-    torch.no_grad() before this is called.
-
-    Returns None if pytorch-grad-cam isn't installed, or if anything about
-    this specific model/library-version combination doesn't line up --
-    Grad-CAM is explanatory evidence on top of a grade, not the grade
-    itself, so a failure here must never take grading down with it. The
-    caller hides the evidence panel when this returns None.
-    """
-    try:
-        from pytorch_grad_cam import GradCAM
-        from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
-        from pytorch_grad_cam.utils.image import show_cam_on_image
-    except ImportError:
-        return None
-    try:
-        cam = GradCAM(model=MODEL, target_layers=[MODEL.conv_head])
-        grayscale_cam = cam(input_tensor=x, targets=[ClassifierOutputTarget(grade)])[0]
-        rgb_float = processed_rgb.astype(np.float32) / 255.0
-        return show_cam_on_image(rgb_float, grayscale_cam, use_rgb=True)
-    except Exception as e:
-        print(f"Grad-CAM failed ({type(e).__name__}: {e}) -- showing the grade without it.")
-        return None
+# B3: to_model_input() lives in app.core.inference (imported above),
+# compute_gradcam_overlay() in app.core.gradcam -- byte-identical bodies,
+# moved so core/ has zero Gradio imports.
 
 
 SCANNING_HTML = (
@@ -825,20 +599,7 @@ def render_context_card(grade):
     return line
 
 
-def pooled_embedding(x):
-    """The penultimate embedding (after global pooling, before the final
-    classifier Linear layer) for one preprocessed image -- timm's standard
-    forward_features -> forward_head(pre_logits=True) split, stable across
-    the EfficientNet family. This is THIS model's own analogue of the
-    frozen per-eye feature vectors src/experiments/claim3_both_eyes.py mean-
-    pooled (features/{backbone}_{size}.npz) -- same idea (pool each eye's
-    embedding, average, classify the average), applied live to this app's
-    own fine-tuned end-to-end network rather than to a separately-fit head
-    on frozen ImageNet features. See predict_both_eyes()'s docstring for
-    why the numbers are NOT a reproduction of Claim 3's reported QWK."""
-    with torch.no_grad():
-        feats = MODEL.forward_features(x)
-        return MODEL.forward_head(feats, pre_logits=True)
+# B3: pooled_embedding() lives in app.core.inference (imported above).
 
 
 def make_log_entry(mode, outcome, probs, raw):
