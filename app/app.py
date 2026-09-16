@@ -845,6 +845,117 @@ def build_image_slider_html(processed_img, gradcam_img, gradcam_skipped):
     )
 
 
+def build_both_eyes_result_html(probs_pooled, outcome_pooled, grade_pooled, exp_grade_pooled,
+                                 conf_pooled, ref_score_pooled, calibration_active,
+                                 per_grade_ctx, grade1_recall,
+                                 left_desc, right_desc, worse_desc, joint_text, fusion_text,
+                                 processing_ms, warning_extra='', extra_detail_html=''):
+    """Build the both-eyes result card: pooled result + per-eye detail block.
+
+    Same card style as single-eye but augmented with joint outcome text
+    and the fusion-effect caveat.
+    """
+    badge_class, icon, label = OUTCOME_BADGE[outcome_pooled]
+
+    if outcome_pooled is D.Outcome.UNGRADABLE:
+        grade_line = (
+            '<div class="fc-grade">Joint outcome unavailable</div>'
+            f'<div class="fc-gradename">{label}</div>'
+        )
+    else:
+        grade_line = (
+            f'<div class="fc-grade">Pooled Grade {grade_pooled}</div>'
+            f'<div class="fc-gradename">{GRADE_NAMES[grade_pooled]} '
+            f'&middot; expected {exp_grade_pooled:.1f}</div>'
+        )
+
+    cal_tag = "calibrated" if calibration_active else "uncalibrated"
+
+    bars_html = ""
+    if probs_pooled is not None:
+        for g in range(5):
+            bars_html += _prob_bar_html(float(probs_pooled[g]), g)
+
+    ctx_html = ""
+    if outcome_pooled is not D.Outcome.UNGRADABLE and per_grade_ctx is not None:
+        c = per_grade_ctx.get(grade_pooled)
+        if c is not None:
+            ctx_html = (
+                f'<div class="fc-outcome-note" style="margin-top:10px;">'
+                f'When the pooled result says Grade {grade_pooled} on the held-out test set, '
+                f'it was right {c.pct_exact:.0%} of the time and within one grade '
+                f'{c.pct_within1:.0%} (n = {c.n}).'
+            )
+            if grade_pooled in (0, 1) and grade1_recall is not None:
+                ctx_html += (
+                    f'<div class="fc-outcome-note" style="margin-top:4px;">Mild disease is '
+                    f"this model's known blind spot: only {grade1_recall:.0%} of truly mild "
+                    f"cases are recognised.</div>"
+                )
+
+    meta_html = (
+        f'<div class="fc-meta-strip">'
+        f'<span class="fc-meta-item">SHA: <code>{MODEL_SHA12}</code></span>'
+        f'<span class="fc-meta-item">Inference: <code>{processing_ms:.0f} ms</code></span>'
+        f'</div>'
+    )
+
+    return (
+        '<div class="fc-result-card">'
+        f'<span class="fc-eyebrow">Both Eyes Assessment</span>'
+        f'<div class="fc-grade-row">'
+        f'<div class="fc-grade-block">{grade_line}</div>'
+        f'<span class="fc-badge {badge_class}">{icon} {label}</span>'
+        f'</div>'
+        f'<div class="fc-meter-label">'
+        f'<span class="fc-eyebrow" style="margin:0;">Joint Confidence</span>'
+        f'<span class="fc-uncal">{round(conf_pooled * 100)}% &middot; {cal_tag}</span>'
+        f'</div>'
+        f'<div class="fc-meter"><i style="width:{conf_pooled * 100}%;"></i></div>'
+        f'{warning_extra}'
+        f'<div class="fc-probs-container"><span class="fc-probs-title">Grade probabilities (joint)</span>{bars_html}</div>'
+        f'{ctx_html}'
+        '</div>'
+        '<div class="fc-card">'
+        '<span class="fc-eyebrow">Per-eye &amp; patient-level detail</span>'
+        f'<div class="fc-outcome-note">Left eye: {left_desc}. Right eye: {right_desc}. '
+        f'Worse-eye grade: {worse_desc}. '
+        f'Patient outcome (pooled OR either eye REFER): <b>{joint_text}</b>.</div>'
+        f'{extra_detail_html}'
+        '<div class="fc-outcome-note" style="margin-top:10px; opacity:0.85;">'
+        'Uncertainty threshold validated on single images, not on combined eyes.</div>'
+        f'{meta_html}'
+        '</div>'
+    )
+
+
+def build_both_eyes_image_html(procL, procR):
+    """Build the both-eyes image comparison: side-by-side preprocessed images."""
+    if procL is None and procR is None:
+        return '<div class="fc-card fc-empty">No images processed.</div>'
+
+    img_tags = ''
+    if procL is not None:
+        img_tags += f'<img src="{procL}" class="fc-img-main" alt="Left eye (preprocessed)">'
+    else:
+        img_tags += '<div class="fc-img-placeholder">Left eye not available</div>'
+    if procR is not None:
+        img_tags += f'<img src="{procR}" class="fc-img-main" alt="Right eye (preprocessed)">'
+    else:
+        img_tags += '<div class="fc-img-placeholder">Right eye not available</div>'
+
+    return (
+        '<div class="fc-card">'
+        '<span class="fc-eyebrow">Preprocessed images</span>'
+        '<div class="fc-img-row">'
+        f'{img_tags}'
+        '</div>'
+        '<div class="fc-outcome-note" style="text-align:center;margin-top:8px;">'
+        'Left eye (preprocessed) &middot; Right eye (preprocessed)</div>'
+        '</div>'
+    )
+
+
 def make_log_entry(mode, outcome, probs, raw):
     """One Session Log row (A7). Session state lives ONLY in this browser
     tab's Gradio session (a plain Python list passed through gr.State) --
@@ -1020,62 +1131,37 @@ def predict(image, session_log):
 
 
 def predict_both_eyes(left_image, right_image, session_log):
-    """Screen 5 of the Fundus Console plan -- ties the app to this
-    project's real Claim 3 finding, decomosed
-    (results/claim3_decomposed_tf_efficientnet_b0_384.json): most of
-    mean-pooling-both-eyes' apparent gain over per-eye-then-max is actually
-    an ordinal-vs-multinomial HEAD effect (+0.048 QWK); the FUSION effect
-    (averaging both eyes' features) is real and significant but smaller
-    (+0.024 QWK at 384px) and reversed sign on one of three backbones.
+    """U5: Console v2 both-eyes. Generator yielding (result_card_html,
+    image_slider_html, session_log, log_html).
 
-    HONEST CAVEAT, stated plainly rather than implied by reusing the same
-    number: this reapplies that SAME IDEA -- pool both eyes' embeddings,
-    classify the average -- to THIS app's own fine-tuned end-to-end model
-    and its own trained softmax head, a DIFFERENT architecture from the
-    separately-fit ordinal-regression head on FROZEN ImageNet features that
-    the decomposition above was measured on. This mode has not been
-    separately re-evaluated on a held-out both-eyes test set, so its own
-    QWK is unknown -- it is a principled application of a validated idea,
-    not a re-validated number (see Task X1 for the not-yet-run
-    measurement). Patient outcome follows DEC-2: REFER if the pooled result
-    or either individual eye is REFER. Both eyes must be the same patient
-    for this to be meaningful -- near-identical uploads are blocked below.
+    Same 3-phase pacing as single-eye: scanning → grade-ready → done.
+    Result card contains pooled grade + per-eye detail + fusion caveat.
     """
-    empty_extra = (None, None)
+    import time as _time
+
     if left_image is None or right_image is None:
         empty = '<div class="fc-card fc-empty">Upload both eyes\' photographs to begin.</div>'
-        yield empty, "", "", None, *empty_extra, session_log, render_log_html(session_log)
+        yield empty, '', session_log, render_log_html(session_log)
         return
 
-    yield SCANNING_HTML, "", "", None, *empty_extra, session_log, render_log_html(session_log)
+    yield SCANNING_HTML, '', session_log, render_log_html(session_log)
 
     if D.images_look_identical(left_image, right_image):
         blocked = (
             '<div class="fc-card fc-empty">These look like the same photo. '
             'Upload the left and right eye of the same patient.</div>'
         )
-        yield blocked, "", "", None, *empty_extra, session_log, render_log_html(session_log)
+        yield blocked, '', session_log, render_log_html(session_log)
         return
 
     quality_l = Q.check_quality(left_image)
     quality_r = Q.check_quality(right_image)
-    if quality_l.ungradable and quality_r.ungradable:
-        blocked = (
-            f'<div class="fc-card fc-empty">Neither eye could be graded '
-            f'(left: {quality_l.message} right: {quality_r.message})</div>'
-        )
-        yield blocked, "", "", None, *empty_extra, session_log, render_log_html(session_log)
-        return
 
-    # B1: an ungradable eye never reaches the model -- its outcome is
-    # UNGRADABLE by construction, per-eye grade is unavailable (None), and
-    # the patient outcome (below) reflects that via DEC-2's extension
-    # (T-10: "per-eye result shown for the other eye, joint outcome
-    # unavailable" unless the gradable eye alone already forces REFER).
-    # B5: each eye's preprocess+inference is wrapped independently -- a
-    # failure grading one eye degrades that eye to "not gradable" rather
-    # than crashing the whole request (the other eye's result, if any, is
-    # still shown, same principle as the single-eye path above).
+    procL = procR = None
+    probs_l = probs_r = None
+    outcome_l = outcome_r = None
+    grade_l = grade_r = None
+
     if not quality_l.ungradable:
         try:
             xL, procL = to_model_input(left_image)
@@ -1089,7 +1175,7 @@ def predict_both_eyes(left_image, right_image, session_log):
             quality_l = Q.QualityResult(True, "error", "Something went wrong grading this image.", None)
             procL, probs_l, outcome_l, grade_l = None, None, D.Outcome.UNGRADABLE, None
     else:
-        procL, probs_l, outcome_l, grade_l = None, None, D.Outcome.UNGRADABLE, None
+        outcome_l = D.Outcome.UNGRADABLE
 
     if not quality_r.ungradable:
         try:
@@ -1104,53 +1190,67 @@ def predict_both_eyes(left_image, right_image, session_log):
             quality_r = Q.QualityResult(True, "error", "Something went wrong grading this image.", None)
             procR, probs_r, outcome_r, grade_r = None, None, D.Outcome.UNGRADABLE, None
     else:
-        procR, probs_r, outcome_r, grade_r = None, None, D.Outcome.UNGRADABLE, None
+        outcome_r = D.Outcome.UNGRADABLE
 
     if quality_l.ungradable and quality_r.ungradable:
         blocked = (
-            f'<div class="fc-card fc-empty">Neither eye could be graded '
-            f'(left: {quality_l.message} right: {quality_r.message})</div>'
+            f'<div class="fc-card">'
+            f'<span class="fc-eyebrow">Both Eyes Assessment</span>'
+            f'<div class="fc-grade">Joint outcome unavailable</div>'
+            f'<div class="fc-gradename">Both eyes failed quality checks.</div>'
+            f'<span class="fc-badge fc-badge-ungradable">\u2715 Not gradable</span>'
+            f'<div class="fc-outcome-note">Left: {quality_l.message}. Right: {quality_r.message}.</div>'
+            f'<div class="fc-meta-strip"><span class="fc-meta-item">SHA: <code>{MODEL_SHA12}</code></span></div>'
+            f'</div>'
         )
-        yield blocked, "", "", None, *empty_extra, session_log, render_log_html(session_log)
+        yield blocked, '', session_log, render_log_html(session_log)
         return
 
+    t0 = _time.perf_counter()
     both_gradable = not quality_l.ungradable and not quality_r.ungradable
     pooling_failed = False
+    outcome_pooled = D.Outcome.UNGRADABLE
+    probs_pooled = raw_pooled = None
+    grade_pooled = 0
+    conf_pooled = 0.0
+    ref_score_pooled = 0.0
+    fusion_384 = context.load_fusion_effect_384()
+    fusion_text = f"{fusion_384:.3f}" if fusion_384 is not None else "unavailable"
+
     if both_gradable:
-        # Pooled: mean embedding -> this model's own classifier head -> the
-        # SAME calibration/outcome pipeline as everything else (A6.2, DEC-3
-        # -- tau validated on single images, applied here to the pooled
-        # result). B5: a pooling failure falls back to showing the LEFT
-        # eye's own result rather than losing both already-computed grades.
         try:
             pooled_l = pooled_embedding(xL)
             pooled_r = pooled_embedding(xR)
             mean_pooled = (pooled_l + pooled_r) / 2
             with torch.inference_mode():
                 logits_pooled = MODEL.classifier(mean_pooled)[0].numpy()
-            verdict_html, referral_html, conf_html, prob_dict, outcome_pooled, probs_pooled, raw_pooled = \
-                render_cards_from_logits(logits_pooled)
+            outcome_pooled = D.classify_outcome(logits_pooled, THRESHOLDS, CALIBRATION_ACTIVE)
+            # Use calibrated probs for pooled
+            probs_pooled = D.calibrated_probs(logits_pooled, THRESHOLDS) if CALIBRATION_ACTIVE else D.raw_probs(logits_pooled)
+            grade_pooled = int(probs_pooled.argmax())
+            conf_pooled = float(probs_pooled[grade_pooled])
+            raw_pooled = D.raw_probs(logits_pooled)
+            ref_score_pooled = float(D.referral_score(probs_pooled)) if CALIBRATION_ACTIVE else float(probs_pooled[2:].sum())
         except Exception as e:
             print(f"Pooled (both-eyes) grading failed ({type(e).__name__}: {e}) "
                   f"-- falling back to the left eye's own result.")
             pooling_failed = True
+
     if not both_gradable or pooling_failed:
-        # One eye ungradable: no pooled embedding is possible. Show the
-        # gradable eye's own single-eye result as the main card (T-10:
-        # "per-eye result shown for the other eye").
         outcome_pooled = D.Outcome.UNGRADABLE
         probs_pooled = raw_pooled = None
-        prob_dict = None
         gradable_logits = logits_l if not quality_l.ungradable else logits_r
-        verdict_html, referral_html, conf_html, prob_dict, _, _, _ = \
-            render_cards_from_logits(gradable_logits)
+        outcome_pooled = D.classify_outcome(gradable_logits, THRESHOLDS, CALIBRATION_ACTIVE)
+        probs_pooled = D.calibrated_probs(gradable_logits, THRESHOLDS) if CALIBRATION_ACTIVE else D.raw_probs(gradable_logits)
+        grade_pooled = int(probs_pooled.argmax())
+        conf_pooled = float(probs_pooled[grade_pooled])
+        raw_pooled = D.raw_probs(gradable_logits)
+        ref_score_pooled = float(D.referral_score(probs_pooled)) if CALIBRATION_ACTIVE else float(probs_pooled[2:].sum())
 
-    # Patient outcome per DEC-2, worse-eye grade, and the restored caveat (A6.3-4).
     joint = D.patient_outcome(outcome_pooled, outcome_l, outcome_r)
     worse_grade = D.worse_eye_grade(grade_l, grade_r) if both_gradable else (
         grade_l if grade_l is not None else grade_r)
-    fusion_384 = context.load_fusion_effect_384()
-    fusion_text = f"{fusion_384:.3f}" if fusion_384 is not None else "unavailable"
+    exp_grade_pooled = float(D.expected_grade(probs_pooled)) if probs_pooled is not None else 0.0
     joint_text = (joint.value if joint is not None else
                   "unavailable (one eye could not be graded)")
     left_desc = (f"Grade {grade_l} ({GRADE_NAMES[grade_l]}), {outcome_l.value}"
@@ -1158,28 +1258,43 @@ def predict_both_eyes(left_image, right_image, session_log):
     right_desc = (f"Grade {grade_r} ({GRADE_NAMES[grade_r]}), {outcome_r.value}"
                   if grade_r is not None else f"not gradable ({quality_r.message})")
     worse_desc = f"{worse_grade} ({GRADE_NAMES[worse_grade]})" if worse_grade is not None else "unavailable"
-    extra_html = (
-        '<div class="fc-card">'
-        '<span class="fc-eyebrow">Per-eye &amp; patient-level detail</span>'
-        f'<div class="fc-outcome-note">Left eye: {left_desc}. Right eye: {right_desc}. '
-        f'Worse-eye grade: {worse_desc}. '
-        f'Patient outcome (pooled OR either eye REFER): <b>{joint_text}</b>.</div>'
-        '<div class="fc-outcome-note" style="margin-top:10px;">Averaging both eyes\' features '
-        'helped in our study, but less than it first appeared: most of the early gain came from '
-        f'the classifier head. The fusion effect alone was {fusion_text} QWK at 384px and '
-        'reversed on one of three backbones. This mode applies the idea to this app\'s model; '
-        'its accuracy here has not been separately measured.</div>'
-        '<div class="fc-outcome-note" style="margin-top:10px; opacity:0.85;">Uncertainty threshold '
-        'validated on single images, not on combined eyes.</div>'
-        '</div>'
+
+    fusion_html = (
+        '<div class="fc-outcome-note" style="margin-top:10px;">'
+        'Averaging both eyes\' features helped in our study, but less than it first appeared: '
+        f'most of the early gain came from the classifier head. The fusion effect alone was '
+        f'{fusion_text} QWK at 384px and reversed on one of three backbones. '
+        'This mode applies the idea to this app\'s model; its accuracy here has not been '
+        'separately measured.</div>'
     )
-    referral_html = referral_html + extra_html
+
+    warning_extra = ''
+    if quality_l.warning or quality_r.warning:
+        warnings = []
+        if quality_l.warning:
+            warnings.append(f"Left: {quality_l.warning}")
+        if quality_r.warning:
+            warnings.append(f"Right: {quality_r.warning}")
+        warning_extra = f'<div class="fc-outcome-note">Basic image checks: {"; ".join(warnings)}</div>'
+
+    processing_ms = (_time.perf_counter() - t0) * 1000
+
+    result_card = build_both_eyes_result_html(
+        probs_pooled, outcome_pooled, grade_pooled, exp_grade_pooled,
+        conf_pooled, ref_score_pooled, CALIBRATION_ACTIVE,
+        PER_GRADE_CONTEXT, GRADE1_RECALL,
+        left_desc, right_desc, worse_desc, joint_text, fusion_text,
+        processing_ms, warning_extra, fusion_html,
+    )
+
+    image_html = build_both_eyes_image_html(procL, procR)
+
     if both_gradable:
         new_log = session_log + [make_log_entry("Both Eyes", outcome_pooled, probs_pooled, raw_pooled)]
     else:
         new_log = session_log
 
-    yield verdict_html, referral_html, conf_html, prob_dict, procL, procR, new_log, render_log_html(new_log)
+    yield result_card, image_html, new_log, render_log_html(new_log)
 
 
 def build_demo():
@@ -1314,18 +1429,15 @@ def build_demo():
                         img_right = gr.Image(type="pil", label="Right eye")
                         btn_both = gr.Button("Grade both eyes", variant="primary")
                     with gr.Column():
-                        out_verdict_b = gr.HTML()
-                        out_referral_b = gr.HTML()
-                        out_conf_b = gr.HTML()
-                        out_probs_b = gr.Label(
-                            label="Grade probabilities (joint)", num_top_classes=5,
+                        out_result_b = gr.HTML(
+                            '<div class="fc-card fc-empty">Upload and grade both eyes to see '
+                            'the joint result card here.</div>',
                         )
+
                 with gr.Row():
-                    out_left_proc = gr.Image(
-                        label="Left eye (preprocessed)", interactive=False,
-                    )
-                    out_right_proc = gr.Image(
-                        label="Right eye (preprocessed)", interactive=False,
+                    out_image_b = gr.HTML(
+                        '<div class="fc-card fc-empty">Results appear here with both '
+                        'eyes\' preprocessed images.</div>',
                     )
 
                 if pair_slot:
@@ -1397,13 +1509,12 @@ def build_demo():
             ],
         )
 
-        # Both Eyes prediction
+        # Both Eyes prediction (U5: 4 outputs — result card HTML, image slider HTML, session log, log HTML)
         btn_both.click(
             predict_both_eyes,
             inputs=[img_left, img_right, session_state],
             outputs=[
-                out_verdict_b, out_referral_b, out_conf_b,
-                out_probs_b, out_left_proc, out_right_proc,
+                out_result_b, out_image_b,
                 session_state, out_log_html,
             ],
         )
