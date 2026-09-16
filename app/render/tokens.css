@@ -1,137 +1,392 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
-/* Committed to ONE explicit dark "instrument console" palette, deliberately --
-   not a light/dark switch. Gradio decides its own light/dark mode through a
-   mechanism that did not line up with a plain @media(prefers-color-scheme)
-   check here (that's the bug from the last screenshot: light-theme text
-   landing on Gradio's dark chrome, and vice versa in the disclaimer box).
-   Rather than chase Gradio's internal theme-state signal version-by-version,
-   every custom block below sets its OWN background AND text color together
-   from this one token set, so it is legible regardless of what Gradio's
-   native components are doing around it. */
+/* ==========================================================================
+   Fundus Console v2 -- Design tokens (UI_IMPROVEMENT_PLAN.md §6.2-6.4)
+   "Clinical instrument, gallery-grade."  Dark console, layered surfaces,
+   hairlines instead of heavy borders, generous whitespace, one display
+   face (Fraunces), and numbers treated as the hero.
+
+   Reserved semantics: teal=routine, amber=refer, lavender=uncertain.
+   DEC-8 also adds: neutral grey=ungradable.
+   No red/green anywhere.  No text below 12px (fixes A7).
+   ========================================================================== */
+
+/* ---- Tokens ---- */
 :root {
-  --fc-bg: #131311; --fc-surface: #1D1B17; --fc-border: #38342D;
-  --fc-text: #ECE6DA; --fc-text-muted: #A79D8C;
-  --fc-teal: #3FC3BC; --fc-teal-soft: #17302D;
-  --fc-amber: #E8A33D; --fc-amber-soft: #392A15;
-  --fc-uncertain: #A99DDF; --fc-uncertain-soft: #292440;
-  --fc-ungradable: #A79D8C; --fc-ungradable-soft: #2A2823;
+  --fc-bg:           #0C0C0B;
+  --fc-surface-1:    #141412;
+  --fc-surface-2:    #1B1A17;
+  --fc-surface-3:    #24221E;
+  --fc-line:         #2E2B26;
+  --fc-line-strong:  #3D3932;
+  --fc-ink:          #EEE9DF;
+  --fc-ink-muted:    #A39A8A;
+  --fc-ink-faint:    #6F685C;
+  --fc-accent:       #8AB4FF;
+  --fc-teal:         #3FC3BC;
+  --fc-teal-soft:    #15302C;
+  --fc-amber:        #E8A33D;
+  --fc-amber-soft:   #382914;
+  --fc-lavender:     #B3A6EC;
+  --fc-lavender-soft:#27223D;
+  --fc-ungradable:   #A39A8A;
+  --fc-ungradable-soft:#2A2823;
 }
 
+/* ---- Body & Gradio chrome override ---- */
+html, body {
+  background: var(--fc-bg) !important;
+  color: var(--fc-ink) !important;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 16px !important;
+}
+
+/* Force custom blocks to inherit colours regardless of Gradio chrome */
+.fc-masthead,
+.fc-card,
+***,
+.fc-nav,
+.fc-section {
+  background: var(--fc-surface-2) !important;
+  color: var(--fc-ink) !important;
+}
+.fc-masthead p, .fc-card p, *** p, .fc-section p,
+.fc-masthead strong, .fc-card strong, *** strong {
+  color: var(--fc-ink) !important;
+}
+
+/* ---- §0 Sticky nav bar ---- */
+.fc-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 24px;
+  background: rgba(12, 12, 11, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid transparent;
+  transition: border-color 160ms;
+}
+.fc-nav.scrolled {
+  border-bottom-color: var(--fc-line);
+}
+.fc-nav a {
+  font-family: "Inter", sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 400;
+  color: var(--fc-ink-muted) !important;
+  text-decoration: none;
+  padding: 4px 0;
+  border-bottom: 2px solid transparent;
+  transition: color 160ms, border-color 200ms;
+}
+.fc-nav a:hover {
+  color: var(--fc-ink) !important;
+}
+.fc-nav a.active {
+  color: var(--fc-ink) !important;
+  border-bottom-color: var(--fc-accent);
+}
+
+/* ---- Masthead ---- */
 .fc-masthead {
-  background: var(--fc-surface); border: 1px solid var(--fc-border); border-radius: 12px;
-  padding: 20px 22px; margin-bottom: 4px;
+  background: var(--fc-surface-2);
+  border: 1px solid var(--fc-line);
+  border-radius: 16px;
+  padding: 20px 22px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 24px rgba(0,0,0,0.35);
 }
 .fc-kicker {
-  font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; letter-spacing: 0.09em;
-  text-transform: uppercase; color: var(--fc-teal); display: block; margin-bottom: 8px;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--fc-teal);
+  display: block;
+  margin-bottom: 8px;
 }
 .fc-title {
-  font-family: "Fraunces", ui-serif, Georgia, serif; font-weight: 560; font-size: 2.1rem;
-  margin: 0 0 16px; color: var(--fc-text);
+  font-family: "Fraunces", ui-serif, Georgia, serif !important;
+  font-weight: 560;
+  font-size: clamp(2rem, 3.4vw, 3.25rem);
+  line-height: 1.08;
+  margin: 0 0 16px;
+  color: var(--fc-ink);
 }
 .fc-specstrip { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
 .fc-specstrip span {
-  font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; color: var(--fc-text-muted);
-  background: var(--fc-bg); border: 1px solid var(--fc-border); border-radius: 4px; padding: 4px 9px;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;
+  color: var(--fc-ink-muted);
+  background: var(--fc-bg);
+  border: 1px solid var(--fc-line);
+  border-radius: 4px;
+  padding: 4px 9px;
 }
-.fc-specstrip b { color: var(--fc-text); font-weight: 500; }
+.fc-specstrip b { color: var(--fc-ink); font-weight: 500; }
 
-.fc-disclaimer {
-  background: var(--fc-surface) !important; color: var(--fc-text) !important;
-  border-radius: 8px; padding: 14px 16px !important; border: 1px solid var(--fc-uncertain);
+/* ---- Disclaimer box (A4: move down from second thing on page) ---- */
+*** {
+  background: var(--fc-surface-2) !important;
+  color: var(--fc-ink) !important;
+  border-radius: 10px;
+  padding: 14px 16px !important;
+  border: 1px solid var(--fc-lavender);
 }
-.fc-disclaimer p, .fc-disclaimer strong { color: var(--fc-text) !important; }
+*** p, *** strong { color: var(--fc-ink) !important; }
 
+/* ---- Cards ---- */
 .fc-card {
-  background: var(--fc-surface); border: 1px solid var(--fc-border); border-radius: 10px;
-  padding: 14px 16px; margin-bottom: 4px;
+  background: var(--fc-surface-2);
+  border: 1px solid var(--fc-line);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset;
+  transition: border-color 160ms, box-shadow 160ms;
+}
+.fc-card:hover {
+  border-color: var(--fc-line-strong);
 }
 .fc-eyebrow {
-  display: block; font-family: "IBM Plex Mono", monospace; font-size: 0.66rem; letter-spacing: 0.07em;
-  text-transform: uppercase; color: var(--fc-text-muted); margin-bottom: 6px;
+  display: block;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;   /* min 12px */
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--fc-ink-muted);
+  margin-bottom: 6px;
 }
-.fc-grade { font-family: "Fraunces", serif; font-weight: 560; font-size: 1.5rem; color: var(--fc-text); line-height: 1.1; }
-.fc-gradename { color: var(--fc-text-muted); font-size: 0.95rem; margin-top: 2px; }
+.fc-grade {
+  font-family: "Fraunces", serif !important;
+  font-weight: 560;
+  font-size: 1.5rem;
+  color: var(--fc-ink);
+  line-height: 1.1;
+}
+.fc-gradename {
+  color: var(--fc-ink-muted);
+  font-size: 0.95rem;
+  margin-top: 2px;
+}
 
+/* ---- Outcome badges (DEC-8 colours) ---- */
 .fc-badge {
-  display: inline-flex; align-items: center; font-family: "IBM Plex Mono", monospace;
-  font-size: 0.78rem; letter-spacing: 0.02em; border-radius: 5px; padding: 5px 10px;
+  display: inline-flex;
+  align-items: center;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;   /* min 12px */
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border-radius: 5px;
+  padding: 5px 10px;
 }
-.fc-badge-refer { background: var(--fc-amber-soft); color: var(--fc-amber); }
-.fc-badge-routine { background: var(--fc-teal-soft); color: var(--fc-teal); }
-.fc-badge-uncertain { background: var(--fc-uncertain-soft); color: var(--fc-uncertain); }
-.fc-badge-ungradable { background: var(--fc-ungradable-soft); color: var(--fc-ungradable); }
+.fc-badge-refer     { background: var(--fc-amber-soft); color: var(--fc-amber); }
+.fc-badge-routine   { background: var(--fc-teal-soft);  color: var(--fc-teal); }
+.fc-badge-uncertain { background: var(--fc-lavender-soft); color: var(--fc-lavender); }
+.fc-badge-ungradable{ background: var(--fc-ungradable-soft); color: var(--fc-ungradable); }
+
 .fc-outcome-note {
-  font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; color: var(--fc-text-muted);
-  margin-top: 8px; line-height: 1.5;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;   /* min 12px */
+  font-weight: 400;
+  color: var(--fc-ink-muted);
+  margin-top: 8px;
+  line-height: 1.5;
 }
 .fc-inactive-banner {
   border: 1px solid var(--fc-amber);
 }
 .fc-inactive-banner p {
-  color: var(--fc-amber); font-family: "IBM Plex Mono", monospace; font-size: 0.72rem;
-  margin: 0 0 10px; line-height: 1.5;
+  color: var(--fc-amber);
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;
+  margin: 0 0 10px;
+  line-height: 1.5;
 }
 
+/* ---- Confidence meter ---- */
 .fc-meter-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-.fc-uncal { font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; color: var(--fc-uncertain); }
-.fc-meter { height: 8px; background: var(--fc-border); border-radius: 4px; overflow: hidden; }
-.fc-meter > i { display: block; height: 100%; background: var(--fc-uncertain); border-radius: 4px 0 0 4px; }
+.fc-uncal {
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;
+  color: var(--fc-lavender);
+}
+.fc-meter {
+  height: 8px;
+  background: var(--fc-line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.fc-meter > i {
+  display: block;
+  height: 100%;
+  background: var(--fc-lavender);
+  border-radius: 4px 0 0 4px;
+}
 
-.fc-empty { color: var(--fc-text-muted); font-style: italic; }
+/* ---- Empty / fallback state ---- */
+.fc-empty {
+  color: var(--fc-ink-muted);
+  font-style: italic;
+}
 
+/* ---- Scanning animation ---- */
 .fc-scanning { display: flex; align-items: center; gap: 18px; }
 .fc-scan-fundus {
-  width: 56px; height: 56px; border-radius: 50%; flex: none; position: relative; overflow: hidden;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  flex: none;
+  position: relative;
+  overflow: hidden;
   background: radial-gradient(circle at 38% 34%, #E8A33D 0%, #C9762A 32%, #7A3A16 72%, #401E0D 100%);
   box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
 }
 .fc-scan-sweep {
-  position: absolute; inset: 0;
+  position: absolute;
+  inset: 0;
   background: linear-gradient(180deg, transparent 0%, rgba(63,195,188,0.65) 48%, transparent 56%);
   animation: fc-sweep 1.4s ease-in-out infinite;
 }
-@keyframes fc-sweep { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
-@media (prefers-reduced-motion: reduce) { .fc-scan-sweep { animation: none; top: 44%; } }
-.fc-steps { list-style: none; margin: 0; padding: 0; font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; }
-.fc-steps li { padding: 3px 0; color: var(--fc-text-muted); }
+@keyframes fc-sweep {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fc-scan-sweep { animation: none; top: 44%; }
+}
+.fc-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;
+}
+.fc-steps li { padding: 3px 0; color: var(--fc-ink-muted); }
 .fc-steps li.fc-step-done { color: var(--fc-teal); }
-.fc-steps li.fc-step-active { color: var(--fc-text); }
+.fc-steps li.fc-step-active { color: var(--fc-ink); }
 
-.fc-cam-caption { font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; color: var(--fc-text-muted); margin-top: 4px; }
+/* ---- Grad-CAM caption ---- */
+.fc-cam-caption {
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;
+  color: var(--fc-ink-muted);
+  margin-top: 4px;
+}
 
-/* Instrument Card -- MASTER_PLAN.md Part 10, Acceptance Test 10.1's own
-   QWK bands, rendered as a gauge instead of a table, with a marker showing
-   where THIS deployed checkpoint actually landed. */
+/* ---- Both-eyes note ---- */
+.fc-both-eyes-note {
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;
+  color: var(--fc-ink-muted);
+  background: var(--fc-surface-2);
+  border: 1px solid var(--fc-line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+/* ---- Instrument Card gauge ---- */
 .fc-gauge-wrap { margin: 10px 0 18px; }
 .fc-gauge-track {
-  position: relative; height: 34px; border-radius: 6px; overflow: visible;
-  display: flex; border: 1px solid var(--fc-border);
+  position: relative;
+  height: 34px;
+  border-radius: 6px;
+  overflow: visible;
+  display: flex;
+  border: 1px solid var(--fc-line);
 }
 .fc-gauge-zone {
-  height: 100%; display: flex; align-items: center; justify-content: center;
-  font-family: "IBM Plex Mono", monospace; font-size: 0.62rem; letter-spacing: 0.03em;
-  color: var(--fc-text-muted); border-right: 1px solid var(--fc-bg); white-space: nowrap; overflow: hidden;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  color: var(--fc-ink-muted);
+  border-right: 1px solid var(--fc-bg);
+  white-space: nowrap;
+  overflow: hidden;
 }
 .fc-gauge-zone:last-child { border-right: none; }
 .fc-gauge-zone-broken { background: #3A1414; }
 .fc-gauge-zone-undertrained { background: var(--fc-amber-soft); color: var(--fc-amber); }
-.fc-gauge-zone-gap { background: var(--fc-bg); }
 .fc-gauge-zone-correct { background: var(--fc-teal-soft); color: var(--fc-teal); }
-.fc-gauge-zone-suspicious { background: var(--fc-uncertain-soft); color: var(--fc-uncertain); }
+.fc-gauge-zone-suspicious { background: var(--fc-lavender-soft); color: var(--fc-lavender); }
 .fc-gauge-zone-leak { background: #3A1414; color: #E8746A; }
 .fc-gauge-marker {
-  position: absolute; top: -9px; transform: translateX(-50%); text-align: center;
-  font-family: "IBM Plex Mono", monospace; font-size: 0.68rem; color: var(--fc-text);
+  position: absolute;
+  top: -9px;
+  transform: translateX(-50%);
+  text-align: center;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;
+  font-weight: 500;
+  color: var(--fc-ink);
 }
-.fc-gauge-marker .fc-gauge-arrow { color: var(--fc-text); font-size: 0.8rem; line-height: 1; }
-.fc-gauge-axis { display: flex; justify-content: space-between; font-family: "IBM Plex Mono", monospace;
-  font-size: 0.62rem; color: var(--fc-text-muted); margin-top: 3px; }
-.fc-verdict-line { font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; margin-top: 10px; }
+.fc-gauge-marker .fc-gauge-arrow { color: var(--fc-ink); font-size: 14px; line-height: 1; }
+.fc-gauge-axis {
+  display: flex;
+  justify-content: space-between;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;
+  color: var(--fc-ink-muted);
+  margin-top: 3px;
+}
+.fc-verdict-line {
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;
+  font-weight: 400;
+  margin-top: 10px;
+}
 
-.fc-both-eyes-note {
-  font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; color: var(--fc-text-muted);
-  background: var(--fc-surface); border: 1px solid var(--fc-border); border-radius: 8px;
-  padding: 10px 12px; margin-bottom: 8px; line-height: 1.5;
+/* ---- QWK meter (Quantum Lab) ---- */
+.fc-meter-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.fc-meter { height: 8px; background: var(--fc-line); border-radius: 4px; overflow: hidden; }
+.fc-meter > i { display: block; height: 100%; background: var(--fc-lavender); border-radius: 4px 0 0 4px; }
+
+/* ---- Eye mode toggle ---- */
+#fc-eye-mode {
+  background: var(--fc-surface-3) !important;
+  border-color: var(--fc-line) !important;
 }
+
+/* ---- Console section layout ---- */
+#fc-try {
+  padding: var(--fc-sp-24) 0;
+}
+#fc-integrity {
+  padding: var(--fc-sp-32) 0;
+  background: var(--fc-surface-1);
+}
+#fc-evidence {
+  padding: var(--fc-sp-32) 0;
+}
+#fc-quantum {
+  padding: var(--fc-sp-32) 0;
+  background: var(--fc-surface-1);
+}
+#fc-about {
+  padding: var(--fc-sp-32) 0;
+}
+
+/* ---- Mobile (< 768px) ---- */
+@media (max-width: 768px) {
+  .fc-title { font-size: 2rem !important; }
+  .fc-masthead { padding: 16px; }
+  .fc-nav { padding: 0 16px; gap: 16px; }
+}
+
+/* ---- Section anchors for scroll offset (account for sticky nav) ---- */
+.fc-section { scroll-margin-top: 72px; }
