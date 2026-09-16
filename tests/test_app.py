@@ -209,3 +209,85 @@ def test_app_pipeline_matches_eval_pipeline_on_real_test_images():
     )
     print(f"\nAcceptance Test 12.1: {len(rows)}/{len(rows)} images matched "
           f"(app pipeline == evaluation pipeline).")
+
+
+# ---------------------------------------------------------------------
+# B6: decision-level Acceptance Test 12.1 -- compares the app's actual
+# four-state OUTCOME (not just argmax) against the outcome computed from
+# the dumped CSV logits, on the same fixed sample _load_p2_test_sample()
+# already uses. Extends the argmax-only check above; does not replace or
+# weaken it.
+# ---------------------------------------------------------------------
+def test_decision_level_acceptance_12_1():
+    from app.app import CALIBRATION_ACTIVE, THRESHOLDS
+    from app.core import decision as D
+
+    test_csv_path = (PROJECT_ROOT / "results" /
+                      "finetune_app_converged_p2_class_balanced_seed42_test_predictions.csv")
+    if not test_csv_path.exists():
+        pytest.skip(f"{test_csv_path} not present")
+
+    rows = _load_p2_test_sample(N_APP_TEST_IMAGES)
+    assert len(rows) >= 1, "no sample images found -- see the argmax-level test above"
+
+    csv_df = pd.read_csv(test_csv_path)
+    logit_cols = [f"logit_{k}" for k in range(5)]
+    logits_by_id = dict(zip(csv_df["image_id"],
+                             csv_df[logit_cols].to_numpy(dtype=np.float64)))
+
+    argmax_mismatches = 0
+    outcome_mismatches = 0
+    max_abs_delta_logit = 0.0
+    details = []
+
+    for image_id, source_path, cached_path in rows:
+        csv_logits = logits_by_id.get(image_id)
+        if csv_logits is None:
+            continue  # image not in this fold's CSV (shouldn't happen for P2 test ids)
+
+        with torch.no_grad(), Image.open(source_path) as im:
+            x, _ = to_model_input(im.convert("RGB"))
+            app_logits = MODEL(x).numpy()[0].astype(np.float64)
+
+        delta = float(np.abs(app_logits - csv_logits).max())
+        max_abs_delta_logit = max(max_abs_delta_logit, delta)
+
+        if CALIBRATION_ACTIVE:
+            csv_probs = D.calibrated_probs(csv_logits, THRESHOLDS)
+            app_probs = D.calibrated_probs(app_logits, THRESHOLDS)
+        else:
+            csv_probs = D.raw_probs(csv_logits)
+            app_probs = D.raw_probs(app_logits)
+
+        csv_outcome = D.classify_outcome(csv_probs, THRESHOLDS, CALIBRATION_ACTIVE)
+        app_outcome = D.classify_outcome(app_probs, THRESHOLDS, CALIBRATION_ACTIVE)
+
+        if int(csv_probs.argmax()) != int(app_probs.argmax()):
+            argmax_mismatches += 1
+        if csv_outcome != app_outcome:
+            outcome_mismatches += 1
+            details.append({
+                "image_id": image_id, "csv_outcome": csv_outcome.value,
+                "app_outcome": app_outcome.value,
+            })
+
+    n = len(rows)
+    out = {
+        "n_images": n,
+        "argmax_mismatches": argmax_mismatches,
+        "outcome_mismatches": outcome_mismatches,
+        "max_abs_delta_logit": max_abs_delta_logit,
+        "calibration_active_at_test_time": CALIBRATION_ACTIVE,
+        "mismatch_details": details,
+    }
+    out_path = PROJECT_ROOT / "results" / "acceptance_12_1.json"
+    out_path.write_text(json.dumps(out, indent=2))
+
+    print(f"\nDecision-level Acceptance Test 12.1: {outcome_mismatches}/{n} outcome mismatches, "
+          f"{argmax_mismatches}/{n} argmax mismatches, max|delta logit|={max_abs_delta_logit:.4f}")
+    print(f"Wrote {out_path}")
+
+    assert outcome_mismatches <= 10, (
+        f"Decision-level Acceptance Test 12.1: {outcome_mismatches}/{n} outcome mismatches "
+        f"exceeds the 10/100 bound. Details: {details[:10]}"
+    )

@@ -1,0 +1,29 @@
+{
+  "n_images": 20,
+  "argmax_mismatches": 1,
+  "outcome_mismatches": 4,
+  "max_abs_delta_logit": 6.219287872314453,
+  "calibration_active_at_test_time": true,
+  "mismatch_details": [
+    {
+      "image_id": "aptos_0151781fe50b",
+      "csv_outcome": "REFER",
+      "app_outcome": "ROUTINE"
+    },
+    {
+      "image_id": "aptos_01c7808d901d",
+      "csv_outcome": "REFER",
+      "app_outcome": "UNCERTAIN"
+    },
+    {
+      "image_id": "aptos_0243404e8a00",
+      "csv_outcome": "UNCERTAIN",
+      "app_outcome": "REFER"
+    },
+    {
+      "image_id": "aptos_069f43616fab",
+      "csv_outcome": "UNCERTAIN",
+      "app_outcome": "REFER"
+    }
+  ]
+}
