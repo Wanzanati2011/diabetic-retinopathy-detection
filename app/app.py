@@ -71,6 +71,7 @@ from app.report.pdf import build_pdf_export as build_pdf_export_v2  # noqa: E402
 from app.data import context  # noqa: E402
 from app.core import quality as Q  # noqa: E402
 from app.data import metrics as M  # noqa: E402
+from app.data import samples  # noqa: E402
 # B3: model loading, preprocessing/inference, and Grad-CAM moved out of
 # app.py into app/core/ -- none of those modules import Gradio.
 from app.core.model import (  # noqa: E402
@@ -92,13 +93,9 @@ GRADE_NAMES = ["No DR", "Mild NPDR", "Moderate NPDR", "Severe NPDR", "Proliferat
 # stale number behind anywhere.
 RESULTS_JSON_PATH = PROJECT_ROOT / "results" / "finetune_app_converged_p2_class_balanced_seed42.json"
 
-# Sample retinal images for quick demo/testing
-SAMPLES = [
-    str(Path(__file__).resolve().parent / "samples" / "sample1.jpg"),
-    str(Path(__file__).resolve().parent / "samples" / "sample2.jpg"),
-    str(Path(__file__).resolve().parent / "samples" / "sample3.jpg"),
-    str(Path(__file__).resolve().parent / "samples" / "sample4.jpg"),
-]
+# B4: sample images come from app/data/samples.py (CURATED_SAMPLES below,
+# loaded from app/samples_local/) -- the old ad-hoc SAMPLES list and its
+# untracked app/samples/sample1-4.jpg are retired.
 # Phase 4 -- Quantum Lab tab source files. Both are written by their own
 # sweep scripts (src/experiments/qml_pqc.py, src/experiments/qcnn_no_cnn.py)
 # and read here as-is -- nothing below re-derives or recomputes a number.
@@ -387,6 +384,10 @@ MASTHEAD_HTML = (
 # renders "data unavailable" rather than crashing (B2's rule, applied early).
 PER_GRADE_CONTEXT = context.load_per_grade_context()
 GRADE1_RECALL = context.load_grade1_recall()
+
+# B4: curated samples, loaded once at startup. None -> the public-app
+# default (no bundled samples, R6/H1) -- chips hide, upload stays (DEC-5).
+CURATED_SAMPLES = samples.load_samples()
 
 
 def _check_optional_dep(module_name):
@@ -854,22 +855,36 @@ def build_demo():
         # to it and re-renders the Session Log tab's table.
         session_state = gr.State([])
 
+        # B4: curated samples (app/samples_local/, local-only per R6/H1)
+        # replace the old ad-hoc SAMPLES/sample1-4.jpg mechanism. Single-
+        # image slots for Single Eye; the "pair" slot for Both Eyes. If the
+        # folder isn't present (the public-app default), chips are hidden
+        # entirely and only the upload prompt shows (DEC-5).
+        single_slots_raw = {k: v for k, v in CURATED_SAMPLES.items() if k != "pair"} if CURATED_SAMPLES else {}
+        pair_slot = CURATED_SAMPLES.get("pair") if CURATED_SAMPLES else None
+        # Each chip label shows its true grade (B4 step 5).
+        single_slots = {
+            f"{slot} (true grade {v['true_grade']})": v for slot, v in single_slots_raw.items()
+        }
+        single_choices = ["Upload your own"] + list(single_slots.keys())
+
         with gr.Tabs():
             with gr.Tab("Single Eye"):
-                gr.Markdown(
-                    "**No retinal image available?** Use one of the samples below "
-                    "or upload your own to test the system.",
-                    elem_classes=["fc-both-eyes-note"],
-                )
-                with gr.Row():
-                    sample_dd = gr.Radio(
-                        ["Upload your own", "Sample 1", "Sample 2", "Sample 3", "Sample 4"],
-                        value="Sample 2",
-                        label="Select a sample image to test",
+                if single_slots:
+                    gr.Markdown(
+                        f"**No retinal image available?** Use one of the samples below "
+                        f"({samples.SAMPLES_CAPTION}) or upload your own to test the system.",
+                        elem_classes=["fc-both-eyes-note"],
                     )
+                    with gr.Row():
+                        sample_dd = gr.Radio(single_choices, value="Upload your own",
+                                              label="Select a sample image to test")
+                else:
+                    gr.Markdown("**Upload a retinal fundus photograph to test the system.**",
+                                elem_classes=["fc-both-eyes-note"])
                 with gr.Row():
                     with gr.Column():
-                        img_in = gr.Image(type="pil", value=SAMPLES[1], label="Upload retinal fundus photograph")
+                        img_in = gr.Image(type="pil", label="Upload retinal fundus photograph")
                         btn = gr.Button("Grade this image", variant="primary")
                     with gr.Column():
                         out_verdict = gr.HTML()
@@ -885,28 +900,29 @@ def build_demo():
                     "library combination — grading itself never depends on it.*",
                     elem_classes=["fc-cam-caption"],
                 )
-                sample_dd.change(update_single_sample, inputs=[sample_dd], outputs=[img_in])
+                if single_slots:
+                    sample_dd.change(make_single_sample_selector(single_slots), inputs=[sample_dd],
+                                      outputs=[img_in])
             with gr.Tab("Both Eyes"):
-                gr.Markdown(
-                    "**No retinal images available?** Use the samples below for left and right eyes, "
-                    "or upload your own. Both photos must be of the same patient.",
-                    elem_classes=["fc-both-eyes-note"],
-                )
+                if pair_slot:
+                    gr.Markdown(
+                        f"**No retinal images available?** Load the paired sample below "
+                        f"({samples.SAMPLES_CAPTION}), or upload your own. Both photos must be of "
+                        f"the same patient.",
+                        elem_classes=["fc-both-eyes-note"],
+                    )
+                    with gr.Row():
+                        btn_load_pair = gr.Button("Load sample pair")
+                else:
+                    gr.Markdown(
+                        "**Upload both eyes' photographs.** Both photos must be of the same patient.",
+                        elem_classes=["fc-both-eyes-note"],
+                    )
                 with gr.Row():
                     with gr.Column():
-                        sample_dd_left = gr.Radio(
-                            ["Upload your own", "Sample 1", "Sample 2", "Sample 3", "Sample 4"],
-                            value="Sample 2",
-                            label="Left eye sample",
-                        )
-                        img_left = gr.Image(type="pil", value=SAMPLES[1], label="Left eye")
+                        img_left = gr.Image(type="pil", label="Left eye")
                     with gr.Column():
-                        sample_dd_right = gr.Radio(
-                            ["Upload your own", "Sample 1", "Sample 2", "Sample 3", "Sample 4"],
-                            value="Sample 2",
-                            label="Right eye sample",
-                        )
-                        img_right = gr.Image(type="pil", value=SAMPLES[1], label="Right eye")
+                        img_right = gr.Image(type="pil", label="Right eye")
                         btn_both = gr.Button("Grade both eyes", variant="primary")
                     with gr.Column():
                         out_verdict_b = gr.HTML()
@@ -916,8 +932,8 @@ def build_demo():
                 with gr.Row():
                     out_left_proc = gr.Image(label="Left eye (preprocessed)", interactive=False)
                     out_right_proc = gr.Image(label="Right eye (preprocessed)", interactive=False)
-                sample_dd_left.change(update_single_sample, inputs=[sample_dd_left], outputs=[img_left])
-                sample_dd_right.change(update_single_sample, inputs=[sample_dd_right], outputs=[img_right])
+                if pair_slot:
+                    btn_load_pair.click(make_pair_sample_loader(pair_slot), outputs=[img_left, img_right])
 
             with gr.Tab("Instrument Card"):
                 gr.HTML(build_instrument_card_html())
@@ -961,22 +977,24 @@ def build_demo():
     return demo, fundus_theme
 
 
-def update_single_sample(selection):
-    """Return the sample file path for the selected option."""
-    if selection is None or selection == "Upload your own":
-        return None
-    idx = int(selection.split()[-1]) - 1
-    return SAMPLES[idx]
-
-
-def update_both_samples(selection_left, selection_right):
-    """Return sample file paths for left and right eye selection."""
-    def resolve(sel):
-        if sel is None or sel == "Upload your own":
+def make_single_sample_selector(single_slots):
+    """B4: returns a Gradio .change() callback that loads the chosen
+    curated sample's image. single_slots is CURATED_SAMPLES minus 'pair'."""
+    def _select(selection):
+        if selection is None or selection == "Upload your own" or selection not in single_slots:
             return None
-        idx = int(sel.split()[-1]) - 1
-        return SAMPLES[idx]
-    return resolve(selection_left), resolve(selection_right)
+        from PIL import Image
+        return Image.open(single_slots[selection]["path"])
+    return _select
+
+
+def make_pair_sample_loader(pair_slot):
+    """B4: returns a Gradio .click() callback that loads the curated pair
+    into both eye inputs at once."""
+    def _load():
+        from PIL import Image
+        return (Image.open(pair_slot["left_path"]), Image.open(pair_slot["right_path"]))
+    return _load
 
 
 if __name__ == "__main__":
