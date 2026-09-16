@@ -1,11 +1,16 @@
 """
-Grad-CAM overlay (AGENT_EXECUTION_PLAN.md Task B3). No Gradio import.
+Grad-CAM overlay (AGENT_EXECUTION_PLAN.md Task B3/B5). No Gradio import.
 """
 from __future__ import annotations
+
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 
 import numpy as np
 
 from app.core.model import MODEL
+
+GRADCAM_TIMEOUT_SECONDS = 4.0
+_GRADCAM_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="gradcam")
 
 
 def compute_gradcam_overlay(x, processed_rgb, grade):
@@ -37,3 +42,23 @@ def compute_gradcam_overlay(x, processed_rgb, grade):
     except Exception as e:
         print(f"Grad-CAM failed ({type(e).__name__}: {e}) -- showing the grade without it.")
         return None
+
+
+def compute_gradcam_overlay_with_timeout(x, processed_rgb, grade,
+                                          timeout_seconds: float = GRADCAM_TIMEOUT_SECONDS):
+    """B5: 'grading result yields first; Grad-CAM yields second. If Grad-
+    CAM takes longer than 4s or raises, show "Heatmap skipped" and keep
+    the grade.' Runs compute_gradcam_overlay() on a worker thread so a slow
+    Grad-CAM can never delay (or crash) the grade the user already has.
+    Returns (overlay_or_None, skipped_reason_or_None)."""
+    future = _GRADCAM_EXECUTOR.submit(compute_gradcam_overlay, x, processed_rgb, grade)
+    try:
+        result = future.result(timeout=timeout_seconds)
+        return result, (None if result is not None else "unavailable")
+    except FutureTimeoutError:
+        print(f"Grad-CAM exceeded {timeout_seconds}s -- skipping (grade already computed).")
+        return None, "timed out"
+    except Exception as e:  # pragma: no cover -- compute_gradcam_overlay already
+        # catches its own exceptions; this is a last-resort net.
+        print(f"Grad-CAM raised unexpectedly ({type(e).__name__}: {e}) -- skipping.")
+        return None, "error"

@@ -79,7 +79,7 @@ from app.core.model import (  # noqa: E402
     MODEL_SHA12, load_model,
 )
 from app.core.inference import to_model_input, pooled_embedding  # noqa: E402
-from app.core.gradcam import compute_gradcam_overlay  # noqa: E402
+from app.core.gradcam import compute_gradcam_overlay_with_timeout  # noqa: E402
 
 METRICS = M.load_metrics()
 
@@ -102,16 +102,32 @@ RESULTS_JSON_PATH = PROJECT_ROOT / "results" / "finetune_app_converged_p2_class_
 QML_JSON_PATH = PROJECT_ROOT / "results" / "qml_pqc.json"
 QCNN_JSON_PATH = PROJECT_ROOT / "results" / "qcnn_no_cnn_pixels.json"
 
-DISCLAIMER = (
-    "**Research prototype trained on public datasets (EyePACS + APTOS). "
-    "NOT a medical device. NOT validated for clinical use. "
-    "Not a substitute for examination by a qualified ophthalmologist.**\n\n"
-    "Confidence shown below is the model's raw softmax output and has **not** been "
-    "calibrated (temperature scaling / a validation-fitted reject threshold, "
-    "MASTER_PLAN.md Part 7, has not been run for this checkpoint yet) -- treat it as "
-    "a rough ranking signal, not a validated probability, and do not use it to decide "
-    "when to trust the model."
-)
+def build_disclaimer_md():
+    """B2/R3: calibration status comes from the live CALIBRATION_ACTIVE
+    flag, not a typed claim -- this exact string was caught stale during
+    B5 (it still claimed 'not calibrated' after A1-A3 landed calibration
+    weeks earlier in this branch's history; D1's grep check missed it
+    because '**not**' split the literal substring 'not calibrated')."""
+    base = (
+        "**Research prototype trained on public datasets (EyePACS + APTOS). "
+        "NOT a medical device. NOT validated for clinical use. "
+        "Not a substitute for examination by a qualified ophthalmologist.**\n\n"
+    )
+    if CALIBRATION_ACTIVE:
+        return base + (
+            "Confidence shown below is temperature-scaled (MASTER_PLAN.md Part 7) and "
+            "gated by a validation-fitted uncertainty threshold -- a case below that "
+            "threshold is flagged UNCERTAIN and routed to a human grader, never silently "
+            "kept or discarded. Treat it as a calibrated ranking signal validated on this "
+            "project's own test set, not as a clinical-grade probability."
+        )
+    return base + (
+        "Calibration is currently INACTIVE for this checkpoint (the checkpoint hash or "
+        "acceptance-test verdict in thresholds.json didn't check out at startup -- see the "
+        "System status panel below). Confidence shown below is the model's raw, "
+        "uncalibrated softmax output -- treat it as a rough ranking signal, not a "
+        "validated probability, and do not use it to decide when to trust the model."
+    )
 
 def build_model_info_md(m):
     """B2: every number below comes from METRICS (app/data/metrics.py), not
@@ -680,16 +696,35 @@ def predict(image, session_log):
                session_log, render_log_html(session_log))
         return
 
-    x, processed_rgb = to_model_input(image)
-    with torch.no_grad():
-        logits = MODEL(x)[0].numpy()
+    # B5: preprocess + inference wrapped -- a failure here (a corrupt-but-
+    # PIL-openable file, an unexpected torch/opencv error) degrades to a
+    # clear message, never a raw traceback in the UI.
+    try:
+        x, processed_rgb = to_model_input(image)
+        with torch.inference_mode():  # grading itself never needs autograd
+            logits = MODEL(x)[0].numpy()
+    except Exception as e:
+        print(f"Grading failed ({type(e).__name__}: {e}) during preprocess/inference.")
+        error_html = ('<div class="fc-card fc-empty">Something went wrong while grading this '
+                      'image. Try a different photo.</div>')
+        yield error_html, "", "", None, None, None, session_log, render_log_html(session_log)
+        return
+
     verdict_html, referral_html, conf_html, prob_dict, outcome, probs, raw = \
         render_cards_from_logits(logits)
     if quality.warning:
         conf_html += (f'<div class="fc-outcome-note">Basic image checks: {quality.warning}</div>')
     grade = int(probs.argmax())
-    cam_overlay = compute_gradcam_overlay(x, processed_rgb, grade)
     new_log = session_log + [make_log_entry("Single Eye", outcome, probs, raw)]
+
+    # B5: the grade is fully computed and logged BEFORE Grad-CAM ever runs
+    # -- yield it now (with no heatmap yet) so a slow/failing Grad-CAM can
+    # never delay or take down the grade the user already has.
+    yield verdict_html, referral_html, conf_html, prob_dict, processed_rgb, None, new_log, render_log_html(new_log)
+
+    cam_overlay, skipped_reason = compute_gradcam_overlay_with_timeout(x, processed_rgb, grade)
+    if skipped_reason is not None:
+        conf_html += f'<div class="fc-outcome-note">Heatmap skipped ({skipped_reason}).</div>'
 
     yield verdict_html, referral_html, conf_html, prob_dict, processed_rgb, cam_overlay, new_log, render_log_html(new_log)
 
@@ -743,40 +778,67 @@ def predict_both_eyes(left_image, right_image, session_log):
     # the patient outcome (below) reflects that via DEC-2's extension
     # (T-10: "per-eye result shown for the other eye, joint outcome
     # unavailable" unless the gradable eye alone already forces REFER).
+    # B5: each eye's preprocess+inference is wrapped independently -- a
+    # failure grading one eye degrades that eye to "not gradable" rather
+    # than crashing the whole request (the other eye's result, if any, is
+    # still shown, same principle as the single-eye path above).
     if not quality_l.ungradable:
-        xL, procL = to_model_input(left_image)
-        with torch.no_grad():
-            logits_l = MODEL(xL)[0].numpy()
-        probs_l = D.calibrated_probs(logits_l, THRESHOLDS) if CALIBRATION_ACTIVE else D.raw_probs(logits_l)
-        outcome_l = D.classify_outcome(probs_l, THRESHOLDS, CALIBRATION_ACTIVE)
-        grade_l = int(probs_l.argmax())
+        try:
+            xL, procL = to_model_input(left_image)
+            with torch.inference_mode():
+                logits_l = MODEL(xL)[0].numpy()
+            probs_l = D.calibrated_probs(logits_l, THRESHOLDS) if CALIBRATION_ACTIVE else D.raw_probs(logits_l)
+            outcome_l = D.classify_outcome(probs_l, THRESHOLDS, CALIBRATION_ACTIVE)
+            grade_l = int(probs_l.argmax())
+        except Exception as e:
+            print(f"Left-eye grading failed ({type(e).__name__}: {e}).")
+            quality_l = Q.QualityResult(True, "error", "Something went wrong grading this image.", None)
+            procL, probs_l, outcome_l, grade_l = None, None, D.Outcome.UNGRADABLE, None
     else:
         procL, probs_l, outcome_l, grade_l = None, None, D.Outcome.UNGRADABLE, None
 
     if not quality_r.ungradable:
-        xR, procR = to_model_input(right_image)
-        with torch.no_grad():
-            logits_r = MODEL(xR)[0].numpy()
-        probs_r = D.calibrated_probs(logits_r, THRESHOLDS) if CALIBRATION_ACTIVE else D.raw_probs(logits_r)
-        outcome_r = D.classify_outcome(probs_r, THRESHOLDS, CALIBRATION_ACTIVE)
-        grade_r = int(probs_r.argmax())
+        try:
+            xR, procR = to_model_input(right_image)
+            with torch.inference_mode():
+                logits_r = MODEL(xR)[0].numpy()
+            probs_r = D.calibrated_probs(logits_r, THRESHOLDS) if CALIBRATION_ACTIVE else D.raw_probs(logits_r)
+            outcome_r = D.classify_outcome(probs_r, THRESHOLDS, CALIBRATION_ACTIVE)
+            grade_r = int(probs_r.argmax())
+        except Exception as e:
+            print(f"Right-eye grading failed ({type(e).__name__}: {e}).")
+            quality_r = Q.QualityResult(True, "error", "Something went wrong grading this image.", None)
+            procR, probs_r, outcome_r, grade_r = None, None, D.Outcome.UNGRADABLE, None
     else:
         procR, probs_r, outcome_r, grade_r = None, None, D.Outcome.UNGRADABLE, None
 
+    if quality_l.ungradable and quality_r.ungradable:
+        blocked = (f'<div class="fc-card fc-empty">Neither eye could be graded '
+                   f'(left: {quality_l.message} right: {quality_r.message})</div>')
+        yield blocked, "", "", None, *empty_extra, session_log, render_log_html(session_log)
+        return
+
     both_gradable = not quality_l.ungradable and not quality_r.ungradable
+    pooling_failed = False
     if both_gradable:
         # Pooled: mean embedding -> this model's own classifier head -> the
         # SAME calibration/outcome pipeline as everything else (A6.2, DEC-3
         # -- tau validated on single images, applied here to the pooled
-        # result).
-        pooled_l = pooled_embedding(xL)
-        pooled_r = pooled_embedding(xR)
-        mean_pooled = (pooled_l + pooled_r) / 2
-        with torch.no_grad():
-            logits_pooled = MODEL.classifier(mean_pooled)[0].numpy()
-        verdict_html, referral_html, conf_html, prob_dict, outcome_pooled, probs_pooled, raw_pooled = \
-            render_cards_from_logits(logits_pooled)
-    else:
+        # result). B5: a pooling failure falls back to showing the LEFT
+        # eye's own result rather than losing both already-computed grades.
+        try:
+            pooled_l = pooled_embedding(xL)
+            pooled_r = pooled_embedding(xR)
+            mean_pooled = (pooled_l + pooled_r) / 2
+            with torch.inference_mode():
+                logits_pooled = MODEL.classifier(mean_pooled)[0].numpy()
+            verdict_html, referral_html, conf_html, prob_dict, outcome_pooled, probs_pooled, raw_pooled = \
+                render_cards_from_logits(logits_pooled)
+        except Exception as e:
+            print(f"Pooled (both-eyes) grading failed ({type(e).__name__}: {e}) "
+                  f"-- falling back to the left eye's own result.")
+            pooling_failed = True
+    if not both_gradable or pooling_failed:
         # One eye ungradable: no pooled embedding is possible. Show the
         # gradable eye's own single-eye result as the main card (T-10:
         # "per-eye result shown for the other eye").
@@ -843,11 +905,16 @@ def build_demo():
     # moved them from the Blocks constructor to launch() (this app warned about
     # exactly that the first time it ran); build_demo() hands the theme back to
     # __main__ so it can be passed where this installed version actually wants it.
+    # B5: delete_cache=(3600, 3600) -- every uploaded/temp file this Blocks
+    # instance creates is deleted once it's more than an hour old, checked
+    # every hour. This is what makes the footer's "removed from temporary
+    # storage within an hour" claim (below) true rather than aspirational.
     with gr.Blocks(
         title="Diabetic Retinopathy Screening Assistant (Research Prototype)",
+        delete_cache=(3600, 3600),
     ) as demo:
         gr.HTML(MASTHEAD_HTML)
-        gr.Markdown(DISCLAIMER, elem_classes=["fc-disclaimer"])
+        gr.Markdown(build_disclaimer_md(), elem_classes=["fc-disclaimer"])
 
         # Shared across every tab -- a plain Python list living in THIS
         # browser session only (Gradio's gr.State), not written to disk or
@@ -972,6 +1039,14 @@ def build_demo():
         )
 
         gr.Markdown("---\n" + build_model_info_md(METRICS))
+        # B5: this sentence is only written because delete_cache=(3600, 3600)
+        # is actually configured on the gr.Blocks() constructor above --
+        # never claim a cleanup guarantee the app doesn't enforce.
+        gr.Markdown(
+            "*Photos are processed in memory and removed from temporary storage within an "
+            "hour. Nothing is kept or used for training.*",
+            elem_classes=["fc-cam-caption"],
+        )
         with gr.Accordion("System status", open=False):
             gr.HTML(build_status_panel_html())
     return demo, fundus_theme
@@ -1009,4 +1084,10 @@ if __name__ == "__main__":
     args = ap.parse_args()
 
     demo, fundus_theme = build_demo()
+    # B5: bounded queue (max_size) + concurrency 1 (default_concurrency_limit)
+    # -- this app holds one model in CPU/GPU memory; letting requests pile
+    # up unbounded would either OOM or silently queue forever with no
+    # user-visible limit. Gradio 6's queue() signature (checked against the
+    # installed version, see docs/verification/V4_env.md).
+    demo.queue(max_size=20, default_concurrency_limit=1)
     demo.launch(share=args.share, server_port=args.port, theme=fundus_theme, css=FUNDUS_CSS)

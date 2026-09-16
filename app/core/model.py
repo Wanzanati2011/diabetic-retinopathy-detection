@@ -44,7 +44,20 @@ def load_model():
     return model, image_size
 
 
+def warm_up(model, image_size):
+    """B5: one forward pass on a zero tensor at startup, so the FIRST real
+    user request doesn't pay for lazy CUDA/cuDNN kernel init, timm's first-
+    call overhead, etc. on top of the actual grading latency."""
+    import time
+
+    t0 = time.time()
+    with torch.inference_mode():
+        model(torch.zeros(1, 3, image_size, image_size))
+    print(f"Warm-up forward pass: {time.time() - t0:.2f}s")
+
+
 MODEL, TRAIN_IMAGE_SIZE = load_model()
+warm_up(MODEL, TRAIN_IMAGE_SIZE)
 
 # A1: calibration integrity check, once at startup. If the checkpoint hash,
 # thresholds file, or acceptance-test verdict don't check out, the app
