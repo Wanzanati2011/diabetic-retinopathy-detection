@@ -466,11 +466,10 @@ def build_hero_html():
     else:
         qwk_str = "unavailable"
 
-    if h.referral_sens_in_10 is not None and h.referral_spec_in_10 is not None:
-        sens_text = f"{h.referral_sens_in_10} in 10"
-        spec_text = f"{h.referral_spec_in_10} in 10"
+    if h.referral_sens_in_10 is not None:
+        sens_text = f"{h.referral_sens_in_10}/10"
     else:
-        sens_text = spec_text = "data unavailable"
+        sens_text = "data unavailable"
 
     if h.n_models is not None:
         models_text = f"{h.n_models} models"
@@ -482,11 +481,10 @@ def build_hero_html():
         f'<div class="fc-stat-tile"><span class="fc-stat-value">{qwk_str}</span>'
         f'<span class="fc-stat-label">QWK of a model that sees *no pixels*, '
         f'only the other eye\'s label</span></div>'
-        f'<div class="fc-stat-tile"><span class="fc-stat-value">'
-        f'{sens_text} / {spec_text}</span>'
-        f'<span class="fc-stat-label">referable patients caught · healthy ones cleared</span></div>'
+        f'<div class="fc-stat-tile"><span class="fc-stat-value">{sens_text}</span>'
+        f'<span class="fc-stat-label">referable patients caught</span></div>'
         f'<div class="fc-stat-tile"><span class="fc-stat-value">{models_text}</span>'
-        f'<span class="fc-stat-label">models trained · 1 laptop GPU</span></div>'
+        f'<span class="fc-stat-label">models trained</span></div>'
         '</div>'
     )
 
@@ -497,8 +495,8 @@ def build_hero_html():
     return (
         '<div class="fc-hero">'
         '<span class="fc-kicker">Diabetic Retinopathy Screening &middot; Research Prototype</span>'
-        f'<h2 class="fc-hero-headline">An AI that grades retinal photos for diabetic eye '
-        'disease, and a study of how to evaluate one honestly.</h2>'
+        '<h2 class="fc-hero-headline">A diabetic retinopathy screening study, and an honest '
+        'look at how to evaluate one.</h2>'
         f'{tiles_html}'
         f'{disclaimer_chip}'
         '</div>'
@@ -1427,7 +1425,7 @@ def build_demo():
             eye_mode = gr.Radio(
                 ["Single Eye", "Both Eyes"],
                 value="Single Eye",
-                label="Mode",
+                show_label=False,
                 elem_id="fc-eye-mode",
             )
 
@@ -1439,11 +1437,15 @@ def build_demo():
                     if CURATED_SAMPLES else {}
                 )
                 pair_slot = CURATED_SAMPLES.get("pair") if CURATED_SAMPLES else None
-                # Item 2: chip labels no longer show the true grade (was
-                # "routine (true grade 0)" etc.) -- ground truth stays in
-                # samples.json for anyone who wants it, just not shown as
-                # a spoiler on the picker itself.
-                single_slots = dict(single_slots_raw)
+                # Chip labels are plain "Sample 1", "Sample 2", ... -- no
+                # true grade (was "routine (true grade 0)") and no slot
+                # name either (was "routine"/"refer"/"proliferative"/etc,
+                # itself a spoiler about what the model should say before
+                # grading). Ground truth and the selection rule both stay
+                # in samples.json for anyone who wants to look them up.
+                single_slots = {
+                    f"Sample {i}": v for i, (_, v) in enumerate(single_slots_raw.items(), start=1)
+                }
                 single_choices = ["Upload your own"] + list(single_slots.keys())
 
                 if single_slots:

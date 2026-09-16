@@ -417,11 +417,8 @@ html, body {
 .fc-meter { height: 8px; background: var(--fc-line); border-radius: 4px; overflow: hidden; }
 .fc-meter > i { display: block; height: 100%; background: var(--fc-lavender); border-radius: 4px 0 0 4px; }
 
-/* ---- Eye mode toggle ---- */
-#fc-eye-mode {
-  background: var(--fc-surface-3) !important;
-  border-color: var(--fc-line) !important;
-}
+/* ---- Eye mode toggle: see the full rebuild further down (search
+   "Eye-mode toggle (item 3)") -- this stub intentionally left minimal. ---- */
 
 /* ---- Console section layout ---- */
 #fc-try {
@@ -852,41 +849,61 @@ html, body {
 .fc-about-section .fc-disclaimer p { margin: 0; color: var(--fc-ink) !important; }
 
 /* ====================================================================
-   Eye-mode toggle (item 1): prominent segmented buttons instead of a
-   plain radio list, and actual show/hide of the two panels (wired in
-   app.py via gr.Column(visible=...) + eye_mode.change()).
+   Eye-mode toggle (item 3): a real segmented pill control, not a radio
+   list wearing pill CSS -- the native radio dot is hidden entirely (it
+   was still visible in the first version, which is what made it read as
+   "a form control" rather than a toggle), the "Mode" label is dropped
+   (show_label=False in app.py; the two options are self-explanatory),
+   and the whole thing is centred as a compact, self-contained switch
+   instead of a full-width bordered box.
    ==================================================================== */
 #fc-eye-mode {
-  margin-bottom: 12px;
+  margin: 0 0 20px;
+}
+#fc-eye-mode > label {
+  display: none !important; /* the "Mode" caption Gradio still renders a
+                                slot for, even with show_label=False */
 }
 #fc-eye-mode .wrap {
-  display: flex;
-  gap: 0;
+  display: inline-flex;
+  gap: 2px;
   background: var(--fc-surface-3) !important;
   border: 1px solid var(--fc-line) !important;
-  border-radius: 10px;
-  padding: 4px;
-  max-width: 360px;
+  border-radius: 999px;
+  padding: 3px;
+  width: auto;
 }
 #fc-eye-mode label {
-  flex: 1 1 50%;
+  position: relative;
   justify-content: center;
-  border-radius: 7px !important;
-  font-family: "IBM Plex Mono", monospace !important;
+  border-radius: 999px !important;
+  font-family: "Inter", sans-serif !important;
   font-size: 13px !important;
-  padding: 10px 12px !important;
+  font-weight: 500;
+  padding: 8px 20px !important;
   color: var(--fc-ink-muted) !important;
   background: transparent !important;
   border: none !important;
-  transition: background 140ms, color 140ms;
+  box-shadow: none !important;
+  transition: background 160ms, color 160ms;
+  cursor: pointer;
 }
-#fc-eye-mode label.selected,
-#fc-eye-mode input:checked + span {
-  color: var(--fc-bg) !important;
+/* Hide the native radio dot entirely -- it's inside the label as a
+   sibling of the text span in Gradio's Radio markup. */
+#fc-eye-mode input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+#fc-eye-mode label:hover {
+  color: var(--fc-ink) !important;
 }
 #fc-eye-mode label:has(input:checked) {
   background: var(--fc-teal) !important;
   color: var(--fc-bg) !important;
+  font-weight: 600;
 }
 
 /* ====================================================================
