@@ -175,8 +175,9 @@ def build_model_info_md(m):
 # U1: also hides Gradio footer + API link, adds sticky nav styling.
 FUNDUS_CSS = (Path(__file__).resolve().parent / "render" / "tokens.css").read_text(encoding="utf-8")
 
-# U1: hide Gradio's default footer and API link to make room for our
-# single-page anchor nav (no gr.Tabs, no gradio-footer visible).
+# Hide Gradio's default footer and API link -- unrelated to navigation
+# style; this was always just chrome cleanup, kept regardless of whether
+# sections are tabs or anchor-scrolled.
 U1_NAV_HIDE = """
 .gradio-container .footer,
 .gradio-container .api-nav,
@@ -186,19 +187,12 @@ U1_NAV_HIDE = """
 .gradio-container div[data-testid*="footer"] { display: none !important; }
 """
 
-# U1: sticky nav markup -- anchor links to each section.
-NAV_HTML = """
-<nav class="fc-nav" id="fc-nav">
-  <a href="#fc-try" class="fc-nav-link" data-target="fc-try">Console</a>
-  <a href="#fc-log" class="fc-nav-link" data-target="fc-log">Session Log</a>
-  <a href="#fc-results" class="fc-nav-link" data-target="fc-results">Results</a>
-  <a href="#fc-integrity" class="fc-nav-link" data-target="fc-integrity">Integrity</a>
-  <a href="#fc-evidence" class="fc-nav-link" data-target="fc-evidence">Evidence</a>
-  <a href="#fc-models" class="fc-nav-link" data-target="fc-models">Models</a>
-  <a href="#fc-built" class="fc-nav-link" data-target="fc-built">Built</a>
-  <a href="#fc-about" class="fc-nav-link" data-target="fc-about">About</a>
-</nav>
-"""
+# NAV_HTML (a sticky anchor-link bar for a single scrolling page) was
+# removed: the user explicitly asked for real tabs/pages instead, now
+# built with gr.Tabs()/gr.Tab() in build_demo(). The .fc-nav/.fc-nav-link
+# CSS in tokens.css is unused dead weight now too but left in place --
+# harmless, and Gradio's own .tab-nav / .tabitem classes drive the real
+# tab bar's look (see tokens.css's "Tab bar" block).
 
 MASTHEAD_HTML = """
 <div class="fc-masthead">
@@ -1348,14 +1342,17 @@ def build_demo():
         gr.HTML(MASTHEAD_HTML)
         gr.Markdown(build_disclaimer_md(), elem_classes=["***"])
 
-        # U1: sticky nav with anchor links to each section.
-        gr.HTML(NAV_HTML)
-        # U1: hide Gradio footer / API link via inline style injected into
-        # the page head -- done as a hidden component so it renders inside
-        # the Blocks scope and applies to this page only.
+        # Hide Gradio's own footer / API link via inline style injected
+        # into the page head -- done as a hidden component so it renders
+        # inside the Blocks scope and applies to this page only. (The
+        # anchor-link sticky nav this used to sit alongside is gone --
+        # replaced by real gr.Tabs() below, per the user's explicit
+        # request for separate sections/pages instead of one scrolling
+        # page with jump-links.)
         gr.HTML(f'<style>{U1_NAV_HIDE}</style>')
 
         # U3: hero section with headline, stat tiles, and disclaimer chip.
+        # Shown above the tabs since it's global context, not one section.
         gr.HTML(build_hero_html())
 
         # Shared across every section -- a plain Python list living in THIS
@@ -1365,12 +1362,20 @@ def build_demo():
         session_state = gr.State([])
 
         # =================================================================
-        # SECTION: Console (Single Eye / Both Eyes) -- elem_id="fc-try"
+        # Real gr.Tabs() -- each item below is its OWN page: only the
+        # active tab's content is shown, matching the user's explicit
+        # request for "everything split as sections, not from the same
+        # page" rather than one continuous scroll with anchor links.
         # =================================================================
-        with gr.Column(elem_id="fc-try"):
-            # U1: Single eye / Both Eyes segmented toggle inside the console
-            # section instead of separate tabs. The radio's .change() below
-            # actually shows/hides the two panels -- previously this control
+        with gr.Tabs():
+        # =================================================================
+        # TAB: Console (Single Eye / Both Eyes)
+        # =================================================================
+         with gr.Tab("Console"), gr.Column(elem_id="fc-try"):
+            # Single eye / Both Eyes segmented toggle inside the Console
+            # tab (grading has its own internal mode, separate from the
+            # top-level tab bar). The radio's .change() below actually
+            # shows/hides the two panels -- previously this control
             # existed but nothing was wired to it, so both panels were
             # always visible at once, stacked on top of each other.
             eye_mode = gr.Radio(
@@ -1474,13 +1479,29 @@ def build_demo():
                         outputs=[img_left, img_right],
                     )
 
-            # -- Session Log (inline, collapsible drawer) --
         # =================================================================
-        # SECTION: Session Log -- elem_id="fc-log" (item 3: promoted out of
-        # the Console section's accordion drawer into its own top-level,
-        # nav-linked section, separate from the grading console).
+        # TAB: Instrument Card -- MASTER_PLAN.md Part 10's own Acceptance
+        # Test 10.1 gauge. This content existed (build_instrument_card_html)
+        # but was never actually called anywhere after the Phase 3 rebuild
+        # replaced the old tab bar -- restored here as its own tab.
         # =================================================================
-        with gr.Column(elem_id="fc-log"):
+         with gr.Tab("Instrument Card"):
+            gr.HTML(build_instrument_card_html())
+
+        # =================================================================
+        # TAB: Quantum Lab -- the QML/QCNN experiment writeups. Same as
+        # Instrument Card: defined (build_quantum_lab_html) but orphaned
+        # since Phase 3, never rendered anywhere. Restored as its own tab.
+        # =================================================================
+         with gr.Tab("Quantum Lab"):
+            gr.HTML(build_quantum_lab_html())
+
+        # =================================================================
+        # TAB: Session Log -- elem_id="fc-log" (item 3: promoted out of
+        # the Console section's accordion drawer into its own top-level
+        # tab, separate from the grading console).
+        # =================================================================
+         with gr.Tab("Session Log"), gr.Column(elem_id="fc-log"):
             gr.HTML('<h3 class="fc-section-title">Session Log</h3>')
             gr.Markdown(
                 "Every grade from **Single Eye** or **Both Eyes** in this browser "
@@ -1501,7 +1522,7 @@ def build_demo():
         # =================================================================
         # SECTION: Clinical Results -- elem_id="fc-results"
         # =================================================================
-        with gr.Column(elem_id="fc-results"):
+         with gr.Tab("Results"), gr.Column(elem_id="fc-results"):
             gr.HTML(evidence.build_c1_clinical_results_html())
             gr.HTML(evidence.build_c2_calibration_html())
             gr.HTML(evidence.build_c3_literature_html())
@@ -1509,33 +1530,33 @@ def build_demo():
         # =================================================================
         # SECTION: Evaluation Integrity -- elem_id="fc-integrity"
         # =================================================================
-        with gr.Column(elem_id="fc-integrity"):
+         with gr.Tab("Integrity"), gr.Column(elem_id="fc-integrity"):
             gr.HTML(evidence.build_c4_integrity_html())
 
         # =================================================================
         # SECTION: Evidence -- elem_id="fc-evidence"
         # =================================================================
-        with gr.Column(elem_id="fc-evidence"):
+         with gr.Tab("Evidence"), gr.Column(elem_id="fc-evidence"):
             gr.HTML(evidence.build_c5_evidence_html())
             gr.HTML(evidence.build_c6_prediction_record_html())
 
         # =================================================================
         # SECTION: Trained Model Comparison -- elem_id="fc-models" (item 5)
         # =================================================================
-        with gr.Column(elem_id="fc-models"):
+         with gr.Tab("Models"), gr.Column(elem_id="fc-models"):
             gr.HTML(evidence.build_models_comparison_html())
 
         # =================================================================
         # SECTION: How It's Built + Limitations -- elem_id="fc-built"
         # =================================================================
-        with gr.Column(elem_id="fc-built"):
+         with gr.Tab("Built"), gr.Column(elem_id="fc-built"):
             gr.HTML(evidence.build_c7_built_html())
             gr.HTML(evidence.build_c8_limitations_html())
 
         # =================================================================
         # SECTION: About -- elem_id="fc-about"
         # =================================================================
-        with gr.Column(elem_id="fc-about"):
+         with gr.Tab("About"), gr.Column(elem_id="fc-about"):
             gr.HTML(evidence.build_c9_about_html())
             gr.Markdown(build_model_info_md(METRICS))
             gr.Markdown(

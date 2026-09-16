@@ -889,6 +889,44 @@ html, body {
   color: var(--fc-bg) !important;
 }
 
+/* ====================================================================
+   Real tab bar (gr.Tabs()/gr.Tab()) -- replaces the old single-page
+   anchor-nav. Gradio's own theme renders tabs with light-mode assumptions
+   that clash with this page's dark chrome, so override explicitly.
+   ==================================================================== */
+.tab-nav {
+  background: var(--fc-bg) !important;
+  border-bottom: 1px solid var(--fc-line) !important;
+  gap: 4px;
+  padding: 0 4px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.tab-nav button {
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 13px !important;
+  font-weight: 500;
+  color: var(--fc-ink-muted) !important;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  border-radius: 0 !important;
+  padding: 12px 16px !important;
+}
+.tab-nav button:hover {
+  color: var(--fc-ink) !important;
+}
+.tab-nav button.selected {
+  color: var(--fc-ink) !important;
+  border-bottom-color: var(--fc-teal) !important;
+}
+.tabitem {
+  background: transparent !important;
+  border: none !important;
+  padding: var(--fc-sp-24) 0 !important;
+}
+
 /* ---- Session log (item 3): own top-level section, not a drawer ---- */
 #fc-log { padding: var(--fc-sp-32) 0; }
 .fc-section-title {
