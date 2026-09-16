@@ -1,0 +1,9 @@
+{
+  "contrast_std_p1_cutoff": 17.299110816350236,
+  "computed_from": "data/processed/384/*.jpg for the P2 VALIDATION fold (data/splits/p2.json) -- these files ARE preprocess()'s own output, since src/data/build_cache.py produced them by calling preprocess() on each source image.",
+  "n_val_images_used": 5843,
+  "n_val_images_missing_locally": 0,
+  "metric": "std of the 384x384x3 uint8 RGB array (0-255 scale)",
+  "percentile": 1,
+  "rule": "processed image std below this cutoff -> UNGRADABLE (low contrast / overexposed)"
+}

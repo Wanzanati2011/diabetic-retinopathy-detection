@@ -68,6 +68,7 @@ from app.core import decision as D  # noqa: E402
 from app.core.session import make_log_entry as make_log_entry_v2  # noqa: E402
 from app.report.pdf import build_pdf_export as build_pdf_export_v2  # noqa: E402
 from app.data import context  # noqa: E402
+from app.core import quality as Q  # noqa: E402
 
 GRADE_NAMES = ["No DR", "Mild NPDR", "Moderate NPDR", "Severe NPDR", "Proliferative DR"]
 IMAGENET_MEAN = torch.tensor((0.485, 0.456, 0.406)).view(3, 1, 1)
@@ -765,6 +766,25 @@ def render_cards_from_logits(logits, is_ungradable=False, ungradable_reason=None
     return verdict_html, referral_html + context_html, conf_html, prob_dict, outcome, probs, raw
 
 
+def render_ungradable_cards(message):
+    """B1: for images that fail a basic quality check before any model
+    forward pass runs at all (unreadable, tiny, huge, dark frame, low
+    contrast) -- no logits exist, so this bypasses render_cards_from_logits
+    entirely rather than faking a probability vector."""
+    badge_class, icon, label = OUTCOME_BADGE[D.Outcome.UNGRADABLE]
+    verdict_html = (
+        '<div class="fc-card"><span class="fc-eyebrow">Assessment</span>'
+        '<div class="fc-grade">Image can&#39;t be graded</div>'
+        f'<div class="fc-gradename">{message}</div></div>'
+    )
+    referral_html = (
+        f'<div class="fc-card"><span class="fc-eyebrow">Recommendation</span>'
+        f'<span class="fc-badge {badge_class}">{icon} {label}</span></div>'
+    )
+    conf_html = '<div class="fc-card fc-empty">No confidence score -- image was not graded.</div>'
+    return verdict_html, referral_html, conf_html
+
+
 def render_context_card(grade):
     """A4: 'When this model says Grade {g}, it was right {x}% of the time
     and within one grade {y}% (n = {n}).' Plus the grade-1 blind-spot line
@@ -869,11 +889,22 @@ def predict(image, session_log):
 
     yield SCANNING_HTML, "", "", None, None, None, session_log, render_log_html(session_log)
 
+    quality = Q.check_quality(image)
+    if quality.ungradable:
+        # No model forward pass ran, so there is nothing to log -- an
+        # UNGRADABLE result never produces a grade/confidence row.
+        verdict_html, referral_html, conf_html = render_ungradable_cards(quality.message)
+        yield (verdict_html, referral_html, conf_html, None, None, None,
+               session_log, render_log_html(session_log))
+        return
+
     x, processed_rgb = to_model_input(image)
     with torch.no_grad():
         logits = MODEL(x)[0].numpy()
     verdict_html, referral_html, conf_html, prob_dict, outcome, probs, raw = \
         render_cards_from_logits(logits)
+    if quality.warning:
+        conf_html += (f'<div class="fc-outcome-note">Basic image checks: {quality.warning}</div>')
     grade = int(probs.argmax())
     cam_overlay = compute_gradcam_overlay(x, processed_rgb, grade)
     new_log = session_log + [make_log_entry("Single Eye", outcome, probs, raw)]
@@ -917,43 +948,81 @@ def predict_both_eyes(left_image, right_image, session_log):
         yield blocked, "", "", None, *empty_extra, session_log, render_log_html(session_log)
         return
 
-    xL, procL = to_model_input(left_image)
-    xR, procR = to_model_input(right_image)
+    quality_l = Q.check_quality(left_image)
+    quality_r = Q.check_quality(right_image)
+    if quality_l.ungradable and quality_r.ungradable:
+        blocked = (f'<div class="fc-card fc-empty">Neither eye could be graded '
+                   f'(left: {quality_l.message} right: {quality_r.message})</div>')
+        yield blocked, "", "", None, *empty_extra, session_log, render_log_html(session_log)
+        return
 
-    # Per-eye: same pipeline as Single Eye, independently on each image (A6.1).
-    with torch.no_grad():
-        logits_l = MODEL(xL)[0].numpy()
-        logits_r = MODEL(xR)[0].numpy()
-    probs_l = D.calibrated_probs(logits_l, THRESHOLDS) if CALIBRATION_ACTIVE else D.raw_probs(logits_l)
-    probs_r = D.calibrated_probs(logits_r, THRESHOLDS) if CALIBRATION_ACTIVE else D.raw_probs(logits_r)
-    outcome_l = D.classify_outcome(probs_l, THRESHOLDS, CALIBRATION_ACTIVE)
-    outcome_r = D.classify_outcome(probs_r, THRESHOLDS, CALIBRATION_ACTIVE)
-    grade_l, grade_r = int(probs_l.argmax()), int(probs_r.argmax())
+    # B1: an ungradable eye never reaches the model -- its outcome is
+    # UNGRADABLE by construction, per-eye grade is unavailable (None), and
+    # the patient outcome (below) reflects that via DEC-2's extension
+    # (T-10: "per-eye result shown for the other eye, joint outcome
+    # unavailable" unless the gradable eye alone already forces REFER).
+    if not quality_l.ungradable:
+        xL, procL = to_model_input(left_image)
+        with torch.no_grad():
+            logits_l = MODEL(xL)[0].numpy()
+        probs_l = D.calibrated_probs(logits_l, THRESHOLDS) if CALIBRATION_ACTIVE else D.raw_probs(logits_l)
+        outcome_l = D.classify_outcome(probs_l, THRESHOLDS, CALIBRATION_ACTIVE)
+        grade_l = int(probs_l.argmax())
+    else:
+        procL, probs_l, outcome_l, grade_l = None, None, D.Outcome.UNGRADABLE, None
 
-    # Pooled: mean embedding -> this model's own classifier head -> the
-    # SAME calibration/outcome pipeline as everything else (A6.2, DEC-3 --
-    # tau validated on single images, applied here to the pooled result).
-    pooled_l = pooled_embedding(xL)
-    pooled_r = pooled_embedding(xR)
-    mean_pooled = (pooled_l + pooled_r) / 2
-    with torch.no_grad():
-        logits_pooled = MODEL.classifier(mean_pooled)[0].numpy()
-    verdict_html, referral_html, conf_html, prob_dict, outcome_pooled, probs_pooled, raw_pooled = \
-        render_cards_from_logits(logits_pooled)
+    if not quality_r.ungradable:
+        xR, procR = to_model_input(right_image)
+        with torch.no_grad():
+            logits_r = MODEL(xR)[0].numpy()
+        probs_r = D.calibrated_probs(logits_r, THRESHOLDS) if CALIBRATION_ACTIVE else D.raw_probs(logits_r)
+        outcome_r = D.classify_outcome(probs_r, THRESHOLDS, CALIBRATION_ACTIVE)
+        grade_r = int(probs_r.argmax())
+    else:
+        procR, probs_r, outcome_r, grade_r = None, None, D.Outcome.UNGRADABLE, None
+
+    both_gradable = not quality_l.ungradable and not quality_r.ungradable
+    if both_gradable:
+        # Pooled: mean embedding -> this model's own classifier head -> the
+        # SAME calibration/outcome pipeline as everything else (A6.2, DEC-3
+        # -- tau validated on single images, applied here to the pooled
+        # result).
+        pooled_l = pooled_embedding(xL)
+        pooled_r = pooled_embedding(xR)
+        mean_pooled = (pooled_l + pooled_r) / 2
+        with torch.no_grad():
+            logits_pooled = MODEL.classifier(mean_pooled)[0].numpy()
+        verdict_html, referral_html, conf_html, prob_dict, outcome_pooled, probs_pooled, raw_pooled = \
+            render_cards_from_logits(logits_pooled)
+    else:
+        # One eye ungradable: no pooled embedding is possible. Show the
+        # gradable eye's own single-eye result as the main card (T-10:
+        # "per-eye result shown for the other eye").
+        outcome_pooled = D.Outcome.UNGRADABLE
+        probs_pooled = raw_pooled = None
+        prob_dict = None
+        gradable_logits = logits_l if not quality_l.ungradable else logits_r
+        verdict_html, referral_html, conf_html, prob_dict, _, _, _ = \
+            render_cards_from_logits(gradable_logits)
 
     # Patient outcome per DEC-2, worse-eye grade, and the restored caveat (A6.3-4).
     joint = D.patient_outcome(outcome_pooled, outcome_l, outcome_r)
-    worse_grade = D.worse_eye_grade(grade_l, grade_r)
+    worse_grade = D.worse_eye_grade(grade_l, grade_r) if both_gradable else (
+        grade_l if grade_l is not None else grade_r)
     fusion_384 = context.load_fusion_effect_384()
     fusion_text = f"{fusion_384:.3f}" if fusion_384 is not None else "unavailable"
     joint_text = (joint.value if joint is not None else
                   "unavailable (one eye could not be graded)")
+    left_desc = (f"Grade {grade_l} ({GRADE_NAMES[grade_l]}), {outcome_l.value}"
+                 if grade_l is not None else f"not gradable ({quality_l.message})")
+    right_desc = (f"Grade {grade_r} ({GRADE_NAMES[grade_r]}), {outcome_r.value}"
+                  if grade_r is not None else f"not gradable ({quality_r.message})")
+    worse_desc = f"{worse_grade} ({GRADE_NAMES[worse_grade]})" if worse_grade is not None else "unavailable"
     extra_html = (
         '<div class="fc-card">'
         '<span class="fc-eyebrow">Per-eye &amp; patient-level detail</span>'
-        f'<div class="fc-outcome-note">Left eye: Grade {grade_l} ({GRADE_NAMES[grade_l]}), '
-        f'{outcome_l.value}. Right eye: Grade {grade_r} ({GRADE_NAMES[grade_r]}), '
-        f'{outcome_r.value}. Worse-eye grade: {worse_grade} ({GRADE_NAMES[worse_grade]}). '
+        f'<div class="fc-outcome-note">Left eye: {left_desc}. Right eye: {right_desc}. '
+        f'Worse-eye grade: {worse_desc}. '
         f'Patient outcome (pooled OR either eye REFER): <b>{joint_text}</b>.</div>'
         '<div class="fc-outcome-note" style="margin-top:10px;">Averaging both eyes\' features '
         'helped in our study, but less than it first appeared: most of the early gain came from '
@@ -965,7 +1034,10 @@ def predict_both_eyes(left_image, right_image, session_log):
         '</div>'
     )
     referral_html = referral_html + extra_html
-    new_log = session_log + [make_log_entry("Both Eyes", outcome_pooled, probs_pooled, raw_pooled)]
+    if both_gradable:
+        new_log = session_log + [make_log_entry("Both Eyes", outcome_pooled, probs_pooled, raw_pooled)]
+    else:
+        new_log = session_log
 
     yield verdict_html, referral_html, conf_html, prob_dict, procL, procR, new_log, render_log_html(new_log)
 
