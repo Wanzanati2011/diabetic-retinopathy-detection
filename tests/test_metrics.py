@@ -48,6 +48,16 @@ def test_t11_grade1_recall_matches_confusion_row():
     assert r1 == pytest.approx(expected)
 
 
+def test_fusion_effect_384_matches_source_json():
+    if not C.CLAIM3_DECOMPOSED_384_PATH.exists():
+        pytest.skip(f"{C.CLAIM3_DECOMPOSED_384_PATH} not present")
+    fusion = C.load_fusion_effect_384()
+    data = json.loads(C.CLAIM3_DECOMPOSED_384_PATH.read_text())
+    expected = data["decomposition"][
+        "2_fusion_effect_pool_minus_per_eye_max_ordinal"]["mean_diff"]
+    assert fusion == pytest.approx(expected)
+
+
 def test_context_missing_file_returns_none(tmp_path):
     ctx = C.load_per_grade_context(csv_path=tmp_path / "does_not_exist.csv")
     assert ctx is None

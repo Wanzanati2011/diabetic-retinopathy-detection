@@ -201,3 +201,50 @@ def test_t5_verdict_not_pass_disables_calibration(tmp_path):
 def test_t5_all_three_share_the_same_banner_text():
     # every disabled reason renders the same fallback banner in the UI
     assert "Calibration file does not match this model" in D.INACTIVE_BANNER
+
+
+# ---------------------------------------------------------------------
+# T-10: Both Eyes -- DEC-2 patient outcome truth table + identical-image guard
+# ---------------------------------------------------------------------
+O = D.Outcome
+
+
+@pytest.mark.parametrize("pooled,left,right,expected", [
+    # any REFER anywhere wins, regardless of the other two
+    (O.REFER, O.ROUTINE, O.ROUTINE, O.REFER),
+    (O.ROUTINE, O.REFER, O.ROUTINE, O.REFER),
+    (O.ROUTINE, O.ROUTINE, O.REFER, O.REFER),
+    (O.REFER, O.UNCERTAIN, O.UNGRADABLE, O.REFER),
+    # all routine -> routine
+    (O.ROUTINE, O.ROUTINE, O.ROUTINE, O.ROUTINE),
+    # uncertain (no refer, no ungradable) -> uncertain
+    (O.UNCERTAIN, O.ROUTINE, O.ROUTINE, O.UNCERTAIN),
+    (O.ROUTINE, O.UNCERTAIN, O.ROUTINE, O.UNCERTAIN),
+    # an ungradable eye with no REFER anywhere -> joint outcome unavailable (None)
+    (O.ROUTINE, O.ROUTINE, O.UNGRADABLE, None),
+    (O.ROUTINE, O.UNGRADABLE, O.UNCERTAIN, None),
+])
+def test_t10_patient_outcome_truth_table(pooled, left, right, expected):
+    result = D.patient_outcome(pooled, left, right)
+    assert result == expected
+
+
+def test_t10_worse_eye_grade():
+    assert D.worse_eye_grade(1, 3) == 3
+    assert D.worse_eye_grade(3, 1) == 3
+    assert D.worse_eye_grade(0, 0) == 0
+
+
+def test_t10_identical_images_blocked():
+    from PIL import Image
+    img = Image.new("RGB", (256, 256), color=(120, 60, 40))
+    assert D.images_look_identical(img, img.copy()) is True
+
+
+def test_t10_different_images_not_blocked():
+    import numpy as np
+    from PIL import Image
+    rng = np.random.RandomState(0)
+    a = Image.fromarray(rng.randint(0, 255, (256, 256, 3), dtype=np.uint8))
+    b = Image.fromarray(rng.randint(0, 255, (256, 256, 3), dtype=np.uint8))
+    assert D.images_look_identical(a, b) is False

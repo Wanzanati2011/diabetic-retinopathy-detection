@@ -23,6 +23,8 @@ PROJECT_ROOT = APP_DIR.parent
 TEST_CSV_PATH = (PROJECT_ROOT / "results" /
                   "finetune_app_converged_p2_class_balanced_seed42_test_predictions.csv")
 GRADE1_JSON_PATH = PROJECT_ROOT / "results" / "grade1_diagnosis.json"
+CLAIM3_DECOMPOSED_384_PATH = (PROJECT_ROOT / "results" /
+                               "claim3_decomposed_tf_efficientnet_b0_384.json")
 
 
 @dataclass(frozen=True)
@@ -76,3 +78,20 @@ def load_grade1_recall(json_path: Path = GRADE1_JSON_PATH) -> Optional[float]:
     fractions = data.get("confusion_row_grade1_fractions", {})
     value = fractions.get("Mild NPDR")
     return float(value) if value is not None else None
+
+
+def load_fusion_effect_384(json_path: Path = CLAIM3_DECOMPOSED_384_PATH) -> Optional[float]:
+    """{fusion_384} for A6's restored Both-Eyes caveat sentence: the fusion
+    effect alone (pool_ordinal minus per_eye_max_ordinal QWK) at 384px, from
+    claim3_decomposed_tf_efficientnet_b0_384.json ->
+    decomposition.2_fusion_effect_pool_minus_per_eye_max_ordinal.mean_diff.
+    See docs/verification/V3_structures.md for why this file (not the
+    bare claim3_decomposed.json) is the 384px one."""
+    if not json_path.exists():
+        return None
+    data = json.loads(json_path.read_text())
+    entry = data.get("decomposition", {}).get(
+        "2_fusion_effect_pool_minus_per_eye_max_ordinal")
+    if entry is None:
+        return None
+    return float(entry["mean_diff"])

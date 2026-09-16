@@ -183,3 +183,46 @@ def classify_outcome(probs: Optional[np.ndarray], thresholds: Optional[Threshold
     if bool(is_referred(probs, thresholds)):
         return Outcome.REFER
     return Outcome.ROUTINE
+
+
+# --------------------------------------------------------------------------
+# A6: Both Eyes -- patient-level outcome (DEC-2) and identical-image guard
+# --------------------------------------------------------------------------
+def patient_outcome(pooled: Outcome, left: Outcome, right: Outcome) -> Optional[Outcome]:
+    """Combine pooled + per-eye outcomes into one patient-level result, per
+    DEC-2 ("REFER if the pooled result or either individual eye is REFER")
+    extended to the other three states in the only order consistent with
+    routing safety: a REFER anywhere can never be suppressed by a better
+    result elsewhere, and a missing (UNGRADABLE) eye can never silently
+    resolve to ROUTINE just because the other eye/pool looked fine.
+
+    Returns None for "joint outcome unavailable" -- an eye is UNGRADABLE and
+    nothing already forced a REFER; callers show the gradable eye's own
+    result and mark the joint/patient row as unavailable (T-10)."""
+    states = (pooled, left, right)
+    if Outcome.REFER in states:
+        return Outcome.REFER
+    if Outcome.UNGRADABLE in states:
+        return None
+    if Outcome.UNCERTAIN in states:
+        return Outcome.UNCERTAIN
+    return Outcome.ROUTINE
+
+
+def worse_eye_grade(left_grade: int, right_grade: int) -> int:
+    """max(left, right) -- DEC-2's 'worse-eye grade' row."""
+    return max(left_grade, right_grade)
+
+
+def images_look_identical(pil_image_a, pil_image_b, hamming_threshold: int = 5) -> bool:
+    """True if the two uploads are near-duplicates by the SAME method
+    src/data/dedup.py uses for the dataset's own duplicate detection
+    (perceptual hash, hash_size=16 / 256-bit, Hamming distance <= 5) --
+    reused, not reimplemented, per AGENT_EXECUTION_PLAN.md A6 step 5."""
+    import imagehash
+
+    from src.data.dedup import hamming_hex
+
+    hash_a = str(imagehash.phash(pil_image_a, hash_size=16))
+    hash_b = str(imagehash.phash(pil_image_b, hash_size=16))
+    return hamming_hex(hash_a, hash_b) <= hamming_threshold
