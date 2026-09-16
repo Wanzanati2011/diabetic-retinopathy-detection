@@ -9,13 +9,17 @@ frozen weights and runs inference.
 WHAT THIS APP IS, HONESTLY:
   - Model: tf_efficientnet_b0 @ 384px, fine-tuned end-to-end on the P2
     (patient-level, honest) split. See app/release/MODEL_CARD.md for the
-    real numbers (test QWK 0.716, referable-DR AUROC 0.912) -- this is the
-    converged retrain (src/train/finetune_converged.py, 40 epochs,
-    early-stop patience 8), which lands in MASTER_PLAN.md Part 10's
-    0.70-0.85 "correct, proceed" band, up from an earlier 15-epoch
-    checkpoint that scored 0.613 ("undertrained"). The retrain also
-    dropped grade-1 (Mild NPDR) recall (0.461 -> 0.161) -- a real,
-    unexplained tradeoff, flagged in MODEL_CARD.md, not smoothed over.
+    real numbers -- this is the converged retrain
+    (src/train/finetune_converged.py, 40 epochs, early-stop patience 8),
+    which lands in MASTER_PLAN.md Part 10's "correct, proceed" acceptance
+    band (Instrument Card tab), up from an earlier, undertrained 15-epoch
+    checkpoint. The retrain also dropped grade-1 (Mild NPDR) recall
+    substantially -- a real tradeoff, investigated in
+    results/grade1_diagnosis.json and flagged in MODEL_CARD.md, not
+    smoothed over. No number here is hand-typed elsewhere in this file
+    (R3) -- every displayed value comes from app/data/metrics.py at
+    runtime, so this comment can't drift out of sync with what the app
+    actually shows.
   - Confidence shown is TEMPERATURE-SCALED (Phase 7,
     src/experiments/calibrate.py; T fitted on the validation fold only,
     app/release/thresholds.json), with a validation-fitted UNCERTAIN gate
@@ -69,6 +73,9 @@ from app.core.session import make_log_entry as make_log_entry_v2  # noqa: E402
 from app.report.pdf import build_pdf_export as build_pdf_export_v2  # noqa: E402
 from app.data import context  # noqa: E402
 from app.core import quality as Q  # noqa: E402
+from app.data import metrics as M  # noqa: E402
+
+METRICS = M.load_metrics()
 
 GRADE_NAMES = ["No DR", "Mild NPDR", "Moderate NPDR", "Severe NPDR", "Proliferative DR"]
 IMAGENET_MEAN = torch.tensor((0.485, 0.456, 0.406)).view(3, 1, 1)
@@ -76,14 +83,12 @@ IMAGENET_STD = torch.tensor((0.229, 0.224, 0.225)).view(3, 1, 1)
 DEFAULT_IMAGE_SIZE = 384  # overridden by the checkpoint's own recorded config, see load_model()
 
 CHECKPOINT_PATH = Path(__file__).resolve().parent / "release" / "best_model.pt"
-# Update this alongside CHECKPOINT_PATH whenever the deployed checkpoint changes
-# (e.g. after a retrain) -- the checkpoint file itself only carries val_qwk
-# (see load_model()'s log line), not the test-set numbers, which live in the
-# training script's separate results/{run_name}.json. Rather than hardcode a
-# test QWK string that goes stale the moment the checkpoint is swapped (as
-# MODEL_INFO_MD/MASTHEAD_HTML below currently do -- known, accepted debt),
-# the Instrument Card tab reads this file live, so IT stays honest even if
-# those older hardcoded strings are forgotten during a swap.
+# B2: the checkpoint file itself only carries val_qwk (see load_model()'s
+# log line), not the test-set numbers, which live in the training script's
+# separate results/{run_name}.json. Every place that number is shown
+# (Instrument Card, masthead spec-strip, MODEL_INFO_MD) reads it live via
+# app/data/metrics.py's METRICS object, so a checkpoint swap can't leave a
+# stale number behind anywhere.
 RESULTS_JSON_PATH = PROJECT_ROOT / "results" / "finetune_app_converged_p2_class_balanced_seed42.json"
 
 # Sample retinal images for quick demo/testing
@@ -110,19 +115,31 @@ DISCLAIMER = (
     "when to trust the model."
 )
 
-MODEL_INFO_MD = (
-    "**Model:** tf_efficientnet_b0 @ 384px, fine-tuned on the P2 (patient-level) split, seed 42.\n\n"
-    "**Real, measured test-set numbers** (from "
-    "`results/finetune_app_converged_p2_class_balanced_seed42.json`, n=5,814 P2 test "
-    "images, evaluated once): 5-class QWK **0.716**, referable-DR (grade ≥ 2) AUROC "
-    "**0.912**.\n\n"
-    "**Status:** this run (converged recipe -- 40 epochs, early-stop patience 8, best "
-    "epoch 32) lands in this project's own \"correct, proceed\" acceptance band "
-    "(0.70-0.85 QWK) -- see MASTER_PLAN.md Part 10, Acceptance Test 10.1. It replaces an "
-    "earlier 15-epoch checkpoint that scored 0.613 (undertrained band); see "
-    "`app/release/MODEL_CARD.md` for the full before/after and what the retrain was "
-    "expected to (and did) fix."
-)
+def build_model_info_md(m):
+    """B2: every number below comes from METRICS (app/data/metrics.py), not
+    typed here -- see R3/T-9."""
+    dm = m.deployed_model
+    if not dm.available:
+        return ("**Model:** tf_efficientnet_b0 @ 384px, fine-tuned on the P2 "
+                 "(patient-level) split, seed 42.\n\n*Deployed-model results file "
+                 "not found -- data unavailable.*")
+    qwk_str = M.fmt_num(dm.test_qwk)
+    auroc_str = M.fmt_num(dm.referable_auroc)
+    n_test = dm.n_test if dm.n_test is not None else "?"
+    epoch_str = f"best epoch {dm.best_epoch}" if dm.best_epoch is not None else "epoch unavailable"
+    verdict = dm.acceptance_test_10_1_verdict or "verdict unavailable"
+    return (
+        "**Model:** tf_efficientnet_b0 @ 384px, fine-tuned on the P2 (patient-level) split, seed 42.\n\n"
+        "**Real, measured test-set numbers** (from "
+        "`results/finetune_app_converged_p2_class_balanced_seed42.json`, "
+        f"n={n_test} P2 test images, evaluated once): 5-class QWK **{qwk_str}**, "
+        f"referable-DR (grade ≥ 2) AUROC **{auroc_str}**.\n\n"
+        f"**Status:** this run (converged recipe -- 40 epochs, early-stop patience 8, "
+        f"{epoch_str}) verdict: *{verdict}* -- see MASTER_PLAN.md Part 10, Acceptance "
+        f"Test 10.1. It replaces an earlier, undertrained 15-epoch checkpoint; see "
+        f"`app/release/MODEL_CARD.md` for the full before/after and what the retrain was "
+        f"expected to (and did) fix."
+    )
 
 # =====================================================================
 # Phase 1 visual pass (see the "Fundus Console" UX plan) -- palette,
@@ -280,8 +297,8 @@ MASTHEAD_HTML = """
   <div class="fc-specstrip">
     <span>MODEL <b>tf_efficientnet_b0 @ 384px</b></span>
     <span>SPLIT <b>P2, patient-level</b></span>
-    <span>TEST QWK <b>0.716</b></span>
-    <span>REFERABLE-DR AUROC <b>0.912</b></span>
+    <span>TEST QWK <b>{{TEST_QWK}}</b></span>
+    <span>REFERABLE-DR AUROC <b>{{REFERABLE_AUROC}}</b></span>
     <span>CALIBRATION <b>{{CALIBRATION_STATUS}}</b></span>
     <span>STATUS <b>research prototype</b></span>
   </div>
@@ -298,7 +315,7 @@ MASTHEAD_HTML = """
 # those as an "undefined band" gap here -- but the training script that
 # actually computes and prints this project's official verdict has no such
 # gap; it is continuous. That mismatch caused this Instrument Card to show
-# a genuinely-correct 0.7160 test QWK result as landing in a gap instead of
+# a genuinely-correct test QWK result as landing in a gap instead of
 # the CORRECT band, contradicting the training script's own printed
 # "correct -- proceed" verdict. Fixed to match the real, executable rule.
 ACCEPTANCE_BANDS = [
@@ -329,9 +346,8 @@ RESULTS = load_json_or_none(RESULTS_JSON_PATH)
 def build_instrument_card_html():
     """Screen 6 of the Fundus Console plan -- MASTER_PLAN.md's own
     Acceptance-Test-10.1 table, rendered as a gauge with a marker at this
-    checkpoint's REAL test QWK (read live from RESULTS, not hardcoded), so
-    this stays honest across a checkpoint swap even if MASTHEAD_HTML/
-    MODEL_INFO_MD's hardcoded strings above are forgotten."""
+    checkpoint's REAL test QWK (read live from RESULTS via METRICS, not
+    typed), so this stays honest across a checkpoint swap."""
     zones_html = "".join(
         f'<div class="fc-gauge-zone {css_class}" style="width:{(hi - lo) * 100:.2f}%" '
         f'title="{lo:.2f}-{hi:.2f}: {sub}">{label}</div>'
@@ -529,8 +545,12 @@ MODEL_SHA12 = D.checkpoint_sha256()[:12] if CHECKPOINT_PATH.exists() else "unkno
 print(f"Calibration active: {CALIBRATION_ACTIVE}"
       f"{'' if CALIBRATION_ACTIVE else f' (reason: {_CALIBRATION_INACTIVE_REASON})'}"
       f"  model sha12={MODEL_SHA12}")
-MASTHEAD_HTML = MASTHEAD_HTML.replace(
-    "{{CALIBRATION_STATUS}}", "calibrated" if CALIBRATION_ACTIVE else "uncalibrated fallback")
+MASTHEAD_HTML = (
+    MASTHEAD_HTML
+    .replace("{{CALIBRATION_STATUS}}", "calibrated" if CALIBRATION_ACTIVE else "uncalibrated fallback")
+    .replace("{{TEST_QWK}}", M.fmt_num(METRICS.deployed_model.test_qwk))
+    .replace("{{REFERABLE_AUROC}}", M.fmt_num(METRICS.deployed_model.referable_auroc))
+)
 
 # A4: per-prediction context, loaded once at startup. None -> that section
 # renders "data unavailable" rather than crashing (B2's rule, applied early).
@@ -1174,7 +1194,7 @@ def build_demo():
                      out_left_proc, out_right_proc, session_state, out_log_html],
         )
 
-        gr.Markdown("---\n" + MODEL_INFO_MD)
+        gr.Markdown("---\n" + build_model_info_md(METRICS))
         with gr.Accordion("System status", open=False):
             gr.HTML(build_status_panel_html())
     return demo, fundus_theme

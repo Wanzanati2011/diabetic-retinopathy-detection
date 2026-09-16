@@ -16,6 +16,50 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.data import context as C
+from app.data import metrics as M
+
+
+# ---------------------------------------------------------------------
+# B2: METRICS loader
+# ---------------------------------------------------------------------
+def test_metrics_loads_without_crashing():
+    m = M.load_metrics()
+    assert m is not None
+    assert isinstance(m.missing_files, list)
+
+
+def test_deployed_model_metrics_match_source_json():
+    if not M.DEPLOYED_MODEL_JSON.exists():
+        pytest.skip(f"{M.DEPLOYED_MODEL_JSON} not present")
+    m = M.load_metrics()
+    data = json.loads(M.DEPLOYED_MODEL_JSON.read_text())
+    assert m.deployed_model.test_qwk == pytest.approx(data["test_qwk"])
+    assert m.deployed_model.referable_auroc == pytest.approx(data["referable_dr_auroc"])
+    assert m.deployed_model.n_test == data["n_test"]
+
+
+def test_calibration_metrics_match_source_json():
+    if not M.THRESHOLDS_JSON.exists():
+        pytest.skip(f"{M.THRESHOLDS_JSON} not present")
+    m = M.load_metrics()
+    th = json.loads(M.THRESHOLDS_JSON.read_text())
+    assert m.calibration.temperature == pytest.approx(th["temperature"])
+    assert m.calibration.reject_tau == pytest.approx(th["reject_tau"])
+
+
+def test_metrics_missing_file_does_not_crash(tmp_path, monkeypatch):
+    monkeypatch.setattr(M, "DEPLOYED_MODEL_JSON", tmp_path / "does_not_exist.json")
+    m = M.load_metrics()
+    assert m.deployed_model.available is False
+    assert m.deployed_model.test_qwk is None
+    assert "deployed model results" in m.missing_files
+
+
+def test_fmt_pct_and_fmt_num_handle_none():
+    assert M.fmt_pct(None) == "data unavailable"
+    assert M.fmt_num(None) == "data unavailable"
+    assert M.fmt_pct(0.716) == "71.6%"
+    assert M.fmt_num(3.3674, decimals=2) == "3.37"
 
 GRADE1_JSON = PROJECT_ROOT / "results" / "grade1_diagnosis.json"
 
@@ -120,8 +164,6 @@ def _numeric_literals_in_source(path: Path):
     return found
 
 
-@pytest.mark.skip(reason="app.py not yet migrated off hardcoded numbers "
-                          "(Task B2/D1) -- enable once METRICS loader lands")
 def test_t9_no_hardcoded_result_numbers():
     offenders = []
     for path in _iter_scanned_files():
