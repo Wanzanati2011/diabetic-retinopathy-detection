@@ -698,6 +698,153 @@ def render_context_card(grade):
 # B3: pooled_embedding() lives in app.core.inference (imported above).
 
 
+def _prob_bar_html(pct, grade_idx, total_grades=5):
+    """Build a single probability bar row for the result card."""
+    # Color progression: teal (no DR) -> greenish -> amber (severe) -> red-ish (proliferative)
+    # Using our semantic palette: teal for routine grades, amber for referable
+    if grade_idx <= 1:
+        bar_color = "var(--fc-teal)"
+    elif grade_idx == 2:
+        bar_color = "var(--fc-amber)"
+    else:
+        bar_color = "var(--fc-amber)"
+
+    pct_str = f"{pct:.1%}"
+    return (
+        f'<div class="fc-prob-row">'
+        f'<span class="fc-prob-label">{pct_str}</span>'
+        f'<span class="fc-prob-name">{GRADE_NAMES[grade_idx]}</span>'
+        f'<div class="fc-prob-track"><div class="fc-prob-fill" style="width:{pct*100}%;background:{bar_color};"></div></div>'
+        f'</div>'
+    )
+
+
+def build_single_result_html(probs, outcome, grade, expected_grade, conf,
+                              ref_score, calibration_active,
+                              gradcam_skipped_reason,
+                              per_grade_ctx, grade1_recall,
+                              processing_ms, timing_text):
+    """Build the complete single-eye result card HTML.
+
+    Combines: outcome badge, referral, calibrated confidence, probability
+    bars, context card, and model timing/sha — all in one card.
+    All numbers come from the decision pipeline, never typed.
+    """
+    # -- Outcome badge --
+    badge_class, icon, label = OUTCOME_BADGE[outcome]
+
+    if outcome is D.Outcome.UNGRADABLE:
+        grade_line = (
+            '<div class="fc-grade">Image can&#39;t be graded</div>'
+            f'<div class="fc-gradename">{expected_grade}</div>'
+        )
+    else:
+        grade_line = (
+            f'<div class="fc-grade">Grade {grade}</div>'
+            f'<div class="fc-gradename">{GRADE_NAMES[grade]} '
+            f'&middot; expected {expected_grade:.1f}</div>'
+        )
+
+    # -- Outcome note (uncertainty gate) --
+    outcome_note = ""
+    if outcome is D.Outcome.UNCERTAIN and THRESHOLDS is not None:
+        tau_pct = round(THRESHOLDS.reject_tau * 100)
+        outcome_note = (
+            f'<div class="fc-outcome-note">Confidence {round(conf * 100)}% is below the '
+            f'{tau_pct}% uncertainty threshold. {THRESHOLDS.reject_action}</div>'
+        )
+
+    # -- Calibration badge --
+    cal_tag = "calibrated" if calibration_active else "uncalibrated"
+
+    # -- Probability bars --
+    bars_html = ""
+    if probs is not None:
+        for g in range(5):
+            bars_html += _prob_bar_html(float(probs[g]), g)
+
+    # -- Context card --
+    ctx_html = ""
+    if outcome is not D.Outcome.UNGRADABLE and per_grade_ctx is not None:
+        c = per_grade_ctx.get(grade)
+        if c is not None:
+            ctx_html = (
+                f'<div class="fc-outcome-note" style="margin-top:10px;">'
+                f'When this model says Grade {grade} on the held-out test set, it was right '
+                f'{c.pct_exact:.0%} of the time and within one grade {c.pct_within1:.0%} '
+                f'(n = {c.n}).'
+            )
+            if grade in (0, 1) and grade1_recall is not None:
+                ctx_html += (
+                    f'<div class="fc-outcome-note" style="margin-top:4px;">Mild disease is this '
+                    f"model's known blind spot: only {grade1_recall:.0%} of truly mild cases "
+                    f"are recognised.</div>"
+                )
+
+    # -- Timing / model SHA strip --
+    meta_html = (
+        f'<div class="fc-meta-strip">'
+        f'<span class="fc-meta-item">SHA: <code>{MODEL_SHA12}</code></span>'
+        f'<span class="fc-meta-item">Inference: <code>{processing_ms:.0f} ms</code></span>'
+        f'</div>'
+    )
+    if timing_text:
+        meta_html += f'<div class="fc-timing-note">{timing_text}</div>'
+
+    # -- Assemble --
+    return (
+        '<div class="fc-result-card">'
+        f'<span class="fc-eyebrow">Assessment</span>'
+        f'<div class="fc-grade-row">'
+        f'<div class="fc-grade-block">{grade_line}</div>'
+        f'<span class="fc-badge {badge_class}">{icon} {label}</span>'
+        f'</div>'
+        f'<div class="fc-meter-label">'
+        f'<span class="fc-eyebrow" style="margin:0;">Confidence</span>'
+        f'<span class="fc-uncal">{round(conf * 100)}% &middot; {cal_tag}</span>'
+        f'</div>'
+        f'<div class="fc-meter"><i style="width:{conf * 100}%;"></i></div>'
+        f'{outcome_note}'
+        f'<div class="fc-probs-container"><span class="fc-probs-title">Grade probabilities</span>{bars_html}</div>'
+        f'{ctx_html}'
+        f'{meta_html}'
+        f'</div>'
+    )
+
+
+def build_image_slider_html(processed_img, gradcam_img, gradcam_skipped):
+    """Build the before/after image comparison section.
+
+    Returns gr.HTML content showing the preprocessed image and Grad-CAM
+    side by side, with a caption explaining the comparison.
+    """
+    if processed_img is None:
+        return '<div class="fc-card fc-empty">No image processed.</div>'
+
+    # Build image HTML with Gradio data URL
+    img_tag = f'<img src="{processed_img}" class="fc-img-main" alt="Preprocessed">'
+
+    if gradcam_img is not None:
+        gc_tag = f'<img src="{gradcam_img}" class="fc-img-gradcam" alt="Grad-CAM">'
+        caption = "Preprocessed input (left) vs. Grad-CAM heatmap (right)"
+    elif gradcam_skipped:
+        gc_tag = '<div class="fc-img-placeholder">Grad-CAM not available</div>'
+        caption = f"Preprocessed input vs. Grad-CAM (skipped: {gradcam_skipped})"
+    else:
+        gc_tag = '<div class="fc-img-placeholder">No Grad-CAM yet</div>'
+        caption = "Preprocessed input vs. Grad-CAM (loading...)"
+
+    return (
+        '<div class="fc-card">'
+        '<span class="fc-eyebrow">Image comparison</span>'
+        '<div class="fc-img-row">'
+        f'{img_tag}{gc_tag}'
+        '</div>'
+        f'<div class="fc-outcome-note" style="text-align:center;margin-top:8px;">{caption}</div>'
+        '</div>'
+    )
+
+
 def make_log_entry(mode, outcome, probs, raw):
     """One Session Log row (A7). Session state lives ONLY in this browser
     tab's Gradio session (a plain Python list passed through gr.State) --
@@ -751,36 +898,61 @@ def build_pdf_export(session_log):
 
 
 def predict(image, session_log):
-    """A generator, not a plain function: Gradio streams each yielded tuple
-    to the UI as it arrives, which is what makes the single scan-sweep
-    frame in Screen 02 of the design plan real rather than a fake spinner.
-    Nothing is padded to feel slower -- if the forward pass is fast, the
-    reveal is fast; the point was pacing the animation to real work, not
-    manufacturing a delay. session_log is a gr.State list, threaded through
-    as both input and output so every grade gets appended to the Session
-    Log tab regardless of which tab produced it."""
+    """U4: Console v2 single-eye. Generator yielding (result_card_html,
+    image_slider_html, session_log, log_html).
+
+    result_card_html: complete single-eye result with outcome badge,
+    calibrated confidence, probability bars, context, timing strip.
+    image_slider_html: side-by-side preprocessed vs Grad-CAM comparison.
+
+    Three yield phases (same pacing as before, just different output shapes):
+      1. Scanning animation
+      2. Grade ready (no Grad-CAM yet)
+      3. Grad-CAM complete
+    """
+    import time as _time
+
     if image is None:
-        empty = '<div class="fc-card fc-empty">Upload a retinal fundus photograph to begin.</div>'
-        yield empty, "", "", None, None, None, session_log, render_log_html(session_log)
+        empty_result = (
+            '<div class="fc-card fc-empty">Upload a retinal fundus photograph to begin.</div>'
+        )
+        yield empty_result, '', session_log, render_log_html(session_log)
         return
 
-    yield SCANNING_HTML, "", "", None, None, None, session_log, render_log_html(session_log)
+    yield SCANNING_HTML, '', session_log, render_log_html(session_log)
 
     quality = Q.check_quality(image)
     if quality.ungradable:
-        # No model forward pass ran, so there is nothing to log -- an
-        # UNGRADABLE result never produces a grade/confidence row.
-        verdict_html, referral_html, conf_html = render_ungradable_cards(quality.message)
-        yield (verdict_html, referral_html, conf_html, None, None, None,
-               session_log, render_log_html(session_log))
+        # Build an ungradable result card
+        outcome = D.Outcome.UNGRADABLE
+        expected_grade = quality.message
+        ref_score = 0.0
+        gradcam_skipped = None
+        build_single_result_html(
+            None, outcome, 0, expected_grade, 0.0, ref_score,
+            CALIBRATION_ACTIVE, gradcam_skipped,
+            PER_GRADE_CONTEXT, GRADE1_RECALL, 0, ""
+        )
+        ungradable_card = (
+            '<div class="fc-card">'
+            '<span class="fc-eyebrow">Assessment</span>'
+            f'<div class="fc-grade">Image can&#39;t be graded</div>'
+            f'<div class="fc-gradename">{quality.message}</div>'
+            f'<span class="fc-badge fc-badge-ungradable">\u2715 Not gradable</span>'
+            f'<div class="fc-outcome-note">No confidence score -- image failed quality checks.</div>'
+            f'<div class="fc-meta-strip"><span class="fc-meta-item">SHA: <code>{MODEL_SHA12}</code></span></div>'
+            '</div>'
+        )
+        yield ungradable_card, '', session_log, render_log_html(session_log)
         return
 
-    # B5: preprocess + inference wrapped -- a failure here (a corrupt-but-
-    # PIL-openable file, an unexpected torch/opencv error) degrades to a
-    # clear message, never a raw traceback in the UI.
+    # U4: time the inference phase
+    t0 = _time.perf_counter()
+
+    # B5: preprocess + inference wrapped
     try:
         x, processed_rgb = to_model_input(image)
-        with torch.inference_mode():  # grading itself never needs autograd
+        with torch.inference_mode():
             logits = MODEL(x)[0].numpy()
     except Exception as e:
         print(f"Grading failed ({type(e).__name__}: {e}) during preprocess/inference.")
@@ -788,28 +960,63 @@ def predict(image, session_log):
             '<div class="fc-card fc-empty">Something went wrong while grading this '
             'image. Try a different photo.</div>'
         )
-        yield error_html, "", "", None, None, None, session_log, render_log_html(session_log)
+        yield error_html, '', session_log, render_log_html(session_log)
         return
+
+    # Timing for inference/preprocess
+    inference_ms = (_time.perf_counter() - t0) * 1000
 
     verdict_html, referral_html, conf_html, prob_dict, outcome, probs, raw = \
         render_cards_from_logits(logits)
-    if quality.warning:
-        conf_html += (
-            f'<div class="fc-outcome-note">Basic image checks: {quality.warning}</div>'
-        )
     grade = int(probs.argmax())
+    conf = float(probs[grade])
+    exp_grade = float(D.expected_grade(probs))
+    ref_score = float(D.referral_score(probs)) if CALIBRATION_ACTIVE else float(probs[2:].sum())
     new_log = session_log + [make_log_entry("Single Eye", outcome, probs, raw)]
 
-    # B5: the grade is fully computed and logged BEFORE Grad-CAM ever runs
-    # -- yield it now (with no heatmap yet) so a slow/failing Grad-CAM can
-    # never delay or take down the grade the user already has.
-    yield verdict_html, referral_html, conf_html, prob_dict, processed_rgb, None, new_log, render_log_html(new_log)
+    # Build the full result card HTML
+    warning_extra = ''
+    if quality.warning:
+        warning_extra = f'<div class="fc-outcome-note">Basic image checks: {quality.warning}</div>'
+    timing_text = f"Preprocess + inference: {inference_ms:.0f} ms"
 
+    result_card = build_single_result_html(
+        probs, outcome, grade, exp_grade, conf, ref_score,
+        CALIBRATION_ACTIVE, None,  # gradcam_skipped is None until phase 3
+        PER_GRADE_CONTEXT, GRADE1_RECALL,
+        inference_ms, timing_text,
+    )
+    # Add warning to result card
+    if warning_extra:
+        result_card = result_card.rstrip('</div>') + warning_extra + '</div>'
+
+    # Build image comparison (no Grad-CAM yet)
+    image_html = build_image_slider_html(processed_rgb, None, gradcam_skipped="not yet loaded")
+
+    # Phase 2 yield: grade ready, no heatmap
+    yield result_card, image_html, new_log, render_log_html(new_log)
+
+    # Phase 3: Grad-CAM
     cam_overlay, skipped_reason = compute_gradcam_overlay_with_timeout(x, processed_rgb, grade)
-    if skipped_reason is not None:
-        conf_html += f'<div class="fc-outcome-note">Heatmap skipped ({skipped_reason}).</div>'
 
-    yield verdict_html, referral_html, conf_html, prob_dict, processed_rgb, cam_overlay, new_log, render_log_html(new_log)
+    # Update image comparison with Grad-CAM
+    timing_text += " + Grad-CAM: <span id='fc-gc-timing'></span>"
+    result_card = build_single_result_html(
+        probs, outcome, grade, exp_grade, conf, ref_score,
+        CALIBRATION_ACTIVE, skipped_reason,
+        PER_GRADE_CONTEXT, GRADE1_RECALL,
+        inference_ms, timing_text,
+    )
+    if warning_extra:
+        result_card = result_card.rstrip('</div>') + warning_extra + '</div>'
+
+    if cam_overlay is not None:
+        image_html = build_image_slider_html(processed_rgb, cam_overlay, gradcam_skipped=None)
+    else:
+        skip_note = f" (skipped: {skipped_reason})" if skipped_reason else ""
+        image_html = build_image_slider_html(processed_rgb, None, gradcam_skipped=skipped_reason or "failed")
+
+    yield result_card, image_html, new_log, render_log_html(new_log)
 
 
 def predict_both_eyes(left_image, right_image, session_log):
@@ -1065,29 +1272,17 @@ def build_demo():
                         img_in = gr.Image(type="pil", label="Upload retinal fundus photograph")
                         btn_single = gr.Button("Grade this image", variant="primary")
                     with gr.Column():
-                        out_verdict_s = gr.HTML()
-                        out_referral_s = gr.HTML()
-                        out_conf_s = gr.HTML()
-                        out_probs_s = gr.Label(
-                            label="Grade probabilities", num_top_classes=5,
+                        out_result_s = gr.HTML(
+                            '<div class="fc-card fc-empty">Upload and grade an image to see '
+                            'the result card here.</div>',
                         )
 
-                gr.Markdown("### Evidence")
+                # U4: image comparison rendered as HTML (not two gr.Image outputs)
                 with gr.Row():
-                    out_original_s = gr.Image(
-                        label="What the model actually saw (preprocessed)",
-                        interactive=False,
+                    out_image_s = gr.HTML(
+                        '<div class="fc-card fc-empty">Results appear here with '
+                        'the preprocessed image and Grad-CAM comparison.</div>',
                     )
-                    out_cam_s = gr.Image(
-                        label="Grad-CAM \u2014 where the model looked",
-                        interactive=False,
-                    )
-                gr.Markdown(
-                    "*Blank if Grad-CAM isn't installed (`pip install grad-cam`) or "
-                    "fails on this model/library combination \u2014 grading itself never "
-                    "depends on it.*",
-                    elem_classes=["fc-cam-caption"],
-                )
 
                 if single_slots:
                     sample_dd_single.change(
@@ -1192,13 +1387,12 @@ def build_demo():
         # Event wiring (must come after all components exist above)
         # =================================================================
 
-        # Single Eye prediction
+        # Single Eye prediction (U4: 4 outputs — result card HTML, image slider HTML, session log, log HTML)
         btn_single.click(
             predict,
             inputs=[img_in, session_state],
             outputs=[
-                out_verdict_s, out_referral_s, out_conf_s,
-                out_probs_s, out_original_s, out_cam_s,
+                out_result_s, out_image_s,
                 session_state, out_log_html,
             ],
         )

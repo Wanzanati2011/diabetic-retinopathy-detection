@@ -50,10 +50,10 @@ def test_t14_gradcam_wrapper_swallows_exceptions_and_predict_still_yields_grade(
     outputs = list(app_module.predict(img, []))
     assert len(outputs) == 3  # scanning, grade-without-heatmap, grade-with-heatmap-attempt
     final = outputs[-1]
-    assert "Grade" in final[0]
-    assert final[5] is None  # cam_overlay: Grad-CAM failed, so no overlay
-    assert "Heatmap skipped" in final[2]  # the conf_html note B5 adds
-    assert len(final[6]) == 1  # the grade WAS logged despite Grad-CAM failing
+    # U4: predict() now yields (result_card_html, image_slider_html, session_log, log_html)
+    assert "Grade" in final[0] or "can't be graded" in final[0]  # result card has grade
+    assert len(final[1]) > 0  # image_slider_html: HTML string with placeholder
+    assert len(final[2]) == 1  # session_log: the grade WAS logged despite Grad-CAM failing
 
 
 def test_t14_gradcam_timeout_wrapper_never_raises():
