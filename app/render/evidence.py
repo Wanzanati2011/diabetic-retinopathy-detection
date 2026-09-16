@@ -379,7 +379,12 @@ def build_c7_built_html():
     html = '<div class="fc-section-card">\n'
     html += '<h3>How It\'s Built <span class="fc-badge">C7</span></h3>\n'
 
+    html += '<h4>Codebase (app/, src/, tests/, scripts/)</h4>\n'
     html += '<div class="fc-chart-row">%s</div>\n' % stats
+
+    html += '<h4>Architecture</h4>\n'
+    html += ('<p class="fc-caption">Each layer only talks to the one directly below it -- app.py never '
+             'imports torch directly, for example, it goes through app/core/.</p>\n')
     html += '<div class="fc-chart-row">%s</div>\n' % arch
 
     html += '<h4>Acceptance Tests</h4>\n'

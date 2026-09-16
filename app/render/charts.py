@@ -339,18 +339,25 @@ def build_forest_plot_svg(levers):
 # ====================================================================
 
 def build_codebase_stats_svg(n_lines, n_files, n_python, n_js):
-    svg_w, svg_h = 200, 60
-    p = []
-    p.append('<svg width="%d" height="%d" viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg">' % (svg_w, svg_h, svg_w, svg_h))
+    """Four stat chips laid out left to right. The previous version drew
+    every chip's rect+text at the SAME (10,10) coordinates -- each one
+    completely covered the last, so only the final chip ("js") was ever
+    visible (exactly what the reported screenshot showed: one lone chip)."""
+    chips = [("%d LOC" % n_lines, "#3FC3BC"),
+             ("%d files" % n_files, "#8AB4FF"),
+             ("%d py" % n_python, "#E8A33D"),
+             ("%d js/css" % n_js, "#B3A6EC")]
+    chip_w, chip_h, gap, pad = 92, 30, 10, 10
+    svg_w = pad * 2 + len(chips) * chip_w + (len(chips) - 1) * gap
+    svg_h = pad * 2 + chip_h
 
-    for text, color in [("%d LOC" % n_lines, "#3FC3BC"),
-                        ("%d files" % n_files, "#8AB4FF"),
-                        ("%d py" % n_python, "#E8A33D"),
-                        ("%d js" % n_js, "#B3A6EC")]:
-        p.append(rct(10, 10, 42, 14, fill=color, **{"rx": "3"}))
-        ta = dict(**{"text-anchor": "middle", "font-size": "9", "fill": "#0C0C0B"})
-        p.append(txt(31, 20, text, **ta))
-
+    p = [f'<svg width="{svg_w}" height="{svg_h}" viewBox="0 0 {svg_w} {svg_h}" '
+         'xmlns="http://www.w3.org/2000/svg">']
+    for i, (text, color) in enumerate(chips):
+        x = pad + i * (chip_w + gap)
+        p.append(rct(x, pad, chip_w, chip_h, fill=color, **{"rx": "6"}))
+        ta = dict(**{"text-anchor": "middle", "font-size": "13", "font-weight": "600", "fill": "#0C0C0B"})
+        p.append(txt(x + chip_w / 2, pad + chip_h / 2 + 5, text, **ta))
     p.append("</svg>")
     return "\n".join(p)
 
@@ -360,23 +367,31 @@ def build_codebase_stats_svg(n_lines, n_files, n_python, n_js):
 # ====================================================================
 
 def build_arch_svg():
-    svg_w, svg_h = 200, 160
-    p = []
-    p.append('<svg width="%d" height="%d" viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg">' % (svg_w, svg_h, svg_w, svg_h))
+    """5-layer architecture stack, top (what the browser talks to) to
+    bottom (frozen weights on disk). Widened and enlarged from the
+    original 200x160/opacity-0.3 version, whose same-hue text-on-tinted-
+    background combination read as nearly blank at the sizes this renders
+    at in practice."""
+    layers = [
+        ("Presentation", "app.py -- Gradio Blocks/Tabs, event wiring", "#8AB4FF"),
+        ("App logic", "app/core/decision.py, quality.py -- calibration, referral, gates", "#3FC3BC"),
+        ("Data", "app/data/metrics.py, context.py, samples.py -- METRICS loader", "#E8A33D"),
+        ("Core inference", "app/core/model.py, inference.py, gradcam.py", "#B3A6EC"),
+        ("Frozen weights", "app/release/best_model.pt -- never modified at runtime", "#6F685C"),
+    ]
+    svg_w = 420
+    bar_h, gap, pad_top = 44, 8, 10
+    svg_h = pad_top * 2 + len(layers) * bar_h + (len(layers) - 1) * gap
 
-    for i, (name, color) in enumerate([
-        ("Presentation (Gradio)", "#8AB4FF"),
-        ("App logic (decision/quality)", "#3FC3BC"),
-        ("Data (METRICS loader)", "#E8A33D"),
-        ("Core (model/inference/gradcam)", "#B3A6EC"),
-        ("Frozen weights", "#6F685C"),
-    ]):
-        y = 10 + i * 25
-        p.append(rct(10, y, 180, 20, fill=color, **{"rx": "4", "opacity": "0.3"}))
-        p.append(rct(10, y, 180, 20, fill="none", stroke=color, **{"stroke-width": "1", "rx": "4"}))
-        ta = dict(**{"text-anchor": "middle", "font-size": "10", "fill": color})
-        p.append(txt(100, y + 14, name, **ta))
-
+    p = [f'<svg width="{svg_w}" height="{svg_h}" viewBox="0 0 {svg_w} {svg_h}" '
+         'xmlns="http://www.w3.org/2000/svg">']
+    for i, (name, detail, color) in enumerate(layers):
+        y = pad_top + i * (bar_h + gap)
+        p.append(rct(10, y, svg_w - 20, bar_h, fill=color, **{"rx": "6"}))
+        ta_name = dict(**{"font-size": "14", "font-weight": "700", "fill": "#0C0C0B"})
+        p.append(txt(22, y + 19, name, **ta_name))
+        ta_detail = dict(**{"font-size": "10", "fill": "#0C0C0B", "opacity": "0.75"})
+        p.append(txt(22, y + 34, detail, **ta_detail))
     p.append("</svg>")
     return "\n".join(p)
 

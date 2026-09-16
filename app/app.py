@@ -197,7 +197,7 @@ U1_NAV_HIDE = """
 MASTHEAD_HTML = """
 <div class="fc-masthead">
   <span class="fc-kicker">Diabetic Retinopathy Screening &middot; Research Prototype</span>
-  <h1 class="fc-title">Fundus Console</h1>
+  <h1 class="fc-title">Diabetic Retinopathy Detector</h1>
   <div class="fc-specstrip">
     <span>MODEL <b>tf_efficientnet_b0 @ 384px</b></span>
     <span>SPLIT <b>P2, patient-level</b></span>
@@ -284,7 +284,7 @@ def build_instrument_card_html():
         '<div class="fc-gauge-axis"><span>0.00</span><span>0.50</span><span>1.00</span></div>'
         '</div>'
         f'{verdict_line}'
-        '<p style="font-family: \'IBM Plex Mono\',monospace;font-size:0.68rem;color:var(--fc-text-muted);'
+        '<p style="font-family: \'IBM Plex Mono\',monospace;font-size:0.68rem;color:var(--fc-ink-muted);'
         'margin-top:10px;line-height:1.6;">These bands are this project\'s own pre-registered '
         "acceptance thresholds (chosen before this checkpoint was evaluated), not a general-purpose "
         "grading scale -- see MASTER_PLAN.md Part 10 for how and why they were set.</p>"
@@ -313,18 +313,29 @@ def build_quantum_lab_html():
     Neither track is presented as a win: both were negative/inconclusive
     results, and this tab says so plainly rather than only showing numbers
     and letting a viewer guess at the framing.
+
+    Item 4: redesigned with a plain-language summary up front for a
+    first-time visitor who has never heard of QWK or PQCs, before the
+    technical sweep tables -- and fixed CSS variables that referenced
+    tokens (--fc-text, --fc-text-muted, --fc-uncertain) renamed during the
+    U2 redesign and no longer existed, so this tab's text colour/size was
+    silently falling back to browser defaults.
     """
     qml = load_json_or_none(QML_JSON_PATH)
     qcnn = load_json_or_none(QCNN_JSON_PATH)
 
     intro = (
-        '<div class="fc-card">'
-        '<span class="fc-eyebrow">Quantum Lab &middot; supervisor-requested QML tracks, reported honestly</span>'
-        '<p style="font-family: \'IBM Plex Mono\',monospace;font-size:0.72rem;color:var(--fc-text-muted);'
-        'line-height:1.6;margin:0;">Two parameterized-quantum-circuit experiments, each compared against '
-        "a classical baseline on the SAME data with a paired bootstrap CI on the difference -- this "
-        "project's standard for calling a result a real win, not a point-estimate guess. Neither track "
-        "beats its classical baseline here; that is reported as the finding, not hidden or reframed.</p>"
+        '<div class="fc-section-card">'
+        '<h3>Quantum Lab <span class="fc-badge">Experimental</span></h3>'
+        '<p><strong>In plain terms:</strong> this project also tried using an actual quantum '
+        'computer (simulated on a laptop -- no real quantum hardware) to help grade these '
+        'images, in two different ways. <strong>Neither approach beat a normal, classical '
+        'neural network</strong> on the same data. That\'s reported honestly below, not hidden '
+        'or spun as a partial win -- a negative result, checked carefully, is still a real '
+        'result.</p>'
+        '<p class="fc-caption">Both tracks are compared against a classical baseline on the '
+        '<em>exact same data</em>, with a statistical confidence interval on the difference -- '
+        'this project\'s bar for calling anything a genuine win rather than a lucky number.</p>'
         '</div>'
     )
 
@@ -340,25 +351,34 @@ def build_quantum_lab_html():
             f"QML head (q={chosen.get('n_qubits')}, l={chosen.get('n_layers')}) "
             "-- matched subsample"
         )
+        qml_qwk = heads.get("qml", {}).get("qwk", 0.0)
+        best_classical_qwk = max(heads.get("multinomial", {}).get("qwk", 0.0),
+                                  heads.get("ordinal", {}).get("qwk", 0.0))
         track1 = (
-            '<div class="fc-card">'
-            '<span class="fc-eyebrow">Track 1 &middot; Hybrid dressed quantum classifier '
-            '(frozen CNN features &rarr; PQC head)</span>'
-            '<p style="font-family: \'IBM Plex Mono\',monospace;font-size:0.68rem;color:var(--fc-text-muted);">'
-            f'Sweep: qubits &times; entangling layers, selected by validation QWK. '
-            f'Best: q={chosen.get("n_qubits")}, layers={chosen.get("n_layers")}.</p>'
-            '<table style="width:100%;border-collapse:collapse;font-family: \'IBM Plex Mono\',monospace;'
-            'font-size:0.68rem;color:var(--fc-text);">'
-            '<tr style="color:var(--fc-text-muted);"><th style="text-align:left;">qubits</th>'
-            '<th>layers</th><th>val QWK</th><th>epochs</th></tr>'
-            f'{sweep_rows}</table>'
-            '<div style="margin-top:14px;">'
-            f'{qwk_meter_html(qml_head_label, heads.get("qml", {}).get("qwk", 0.0))}'
+            '<div class="fc-section-card">'
+            '<h3>Track 1: Quantum circuit as the "final decision" layer '
+            '<span class="fc-badge fc-verdict-fail">Quantum lost</span></h3>'
+            '<p><strong>What this tried:</strong> keep the same image-understanding network as the '
+            'rest of this app, but swap its final decision-making layer for a small quantum circuit '
+            '(a "parameterized quantum circuit" or PQC) instead of a normal neural-network layer.</p>'
+            '<p><strong>What happened:</strong> the quantum version scored <strong>%s QWK</strong> '
+            '(a 0-1 agreement score, higher is better) vs. <strong>%s QWK</strong> for the best plain '
+            'classical layer on the identical data -- the classical layer won clearly.</p>'
+            % (M.fmt_num(qml_qwk), M.fmt_num(best_classical_qwk))
+        )
+        track1 += (
+            f'{qwk_meter_html(qml_head_label, qml_qwk)}'
             f'{qwk_meter_html("Multinomial head (classical) &mdash; matched subsample", heads.get("multinomial", {}).get("qwk", 0.0))}'
             f'{qwk_meter_html("Ordinal head (classical) &mdash; matched subsample", heads.get("ordinal", {}).get("qwk", 0.0))}'
-            '</div>'
-            f'<p style="font-family: \'IBM Plex Mono\',monospace;font-size:0.68rem;color:var(--fc-amber);'
-            f'margin-top:10px;line-height:1.6;">{qml.get("verdict_text", "")}</p>'
+        )
+        track1 += (
+            f'<p class="fc-caption" style="margin-top:10px;">{qml.get("verdict_text", "")}</p>'
+            '<details class="fc-collapsible"><summary>Full qubit &times; layer sweep</summary>'
+            f'<p class="fc-caption">Best config: q={chosen.get("n_qubits")}, layers={chosen.get("n_layers")}, '
+            'selected by validation QWK.</p>'
+            '<table class="fc-cm-table">'
+            '<tr><th>qubits</th><th>layers</th><th>val QWK</th><th>epochs</th></tr>'
+            f'{sweep_rows}</table></details>'
             '</div>'
         )
     else:
@@ -374,28 +394,36 @@ def build_quantum_lab_html():
             for r in qcnn.get("sweep", [])
         )
         ref = qcnn.get("full_training_set_reference_cited", {})
+        qcnn_qwk = qcnn.get("qcnn", {}).get("qwk", 0.0)
+        qcnn_baseline_qwk = qcnn.get("matched_classical_baseline", {}).get("qwk", 0.0)
         track2 = (
-            '<div class="fc-card">'
-            '<span class="fc-eyebrow">Track 2 &middot; True no-CNN Quantum Convolutional Network '
-            '(quantum circuit on raw, heavily downsampled pixels)</span>'
-            '<table style="width:100%;border-collapse:collapse;font-family: \'IBM Plex Mono\',monospace;'
-            'font-size:0.68rem;color:var(--fc-text);">'
-            '<tr style="color:var(--fc-text-muted);"><th style="text-align:left;">qubits</th>'
-            '<th>conv reps</th><th>val QWK</th><th>wall time</th></tr>'
-            f'{sweep_rows2}</table>'
-            '<div style="margin-top:14px;">'
-            f'{qwk_meter_html("QCNN (best config)", qcnn.get("qcnn", {}).get("qwk", 0.0))}'
-            f'{qwk_meter_html("Classical baseline, SAME downsampled pixels", qcnn.get("matched_classical_baseline", {}).get("qwk", 0.0))}'
-            '</div>'
-            f'<p style="font-family: \'IBM Plex Mono\',monospace;font-size:0.68rem;color:var(--fc-uncertain);'
-            f'margin-top:10px;line-height:1.6;">Verdict ({qcnn.get("verdict")}): {qcnn.get("verdict_text", "")}</p>'
-            '<p style="font-family: \'IBM Plex Mono\',monospace;font-size:0.64rem;color:var(--fc-text-muted);'
-            f'margin-top:8px;line-height:1.6;">Cited for context, NOT a matched comparison: full-resolution '
-            f'CNN features on the full P2 train set reach multinomial QWK '
+            '<div class="fc-section-card">'
+            '<h3>Track 2: A fully quantum classifier, no CNN at all '
+            f'<span class="fc-badge fc-verdict-fail">{(qcnn.get("verdict") or "inconclusive").replace("_", " ")}</span></h3>'
+            '<p><strong>What this tried:</strong> skip the normal image-recognition network entirely and '
+            'feed the raw photo (shrunk down to a tiny handful of pixels a quantum circuit can actually '
+            'handle) straight into a quantum circuit that does all the classifying itself.</p>'
+            '<p><strong>What happened:</strong> quantum scored <strong>%s QWK</strong> vs. '
+            '<strong>%s QWK</strong> for a classical model given the exact same tiny, blurry pixels -- '
+            'neither did well, because shrinking a fundus photo that much throws away the lesions '
+            'that matter. This isn\'t a quantum-specific failure; a classical model on the same crippled '
+            'input does no better.</p>'
+            % (M.fmt_num(qcnn_qwk), M.fmt_num(qcnn_baseline_qwk))
+        )
+        track2 += (
+            f'{qwk_meter_html("QCNN (best config)", qcnn_qwk)}'
+            f'{qwk_meter_html("Classical baseline, SAME downsampled pixels", qcnn_baseline_qwk)}'
+        )
+        track2 += (
+            f'<p class="fc-caption" style="margin-top:10px;">{qcnn.get("verdict_text", "")}</p>'
+            '<p class="fc-caption">For context only (not a fair comparison -- this uses much more image '
+            f'detail): a classical model with the FULL, non-shrunk photo reaches multinomial QWK '
             f'{ref.get("multinomial_qwk_full_resolution_cnn_features", 0):.3f}, ordinal '
-            f'{ref.get("ordinal_qwk_full_resolution_cnn_features", 0):.3f} -- the gap above is mostly the '
-            "4x4/16x16-pixel downsampling the encoding bottleneck forces, not something specific to going "
-            "quantum (the matched classical baseline on the same crippled pixels does no better either).</p>"
+            f'{ref.get("ordinal_qwk_full_resolution_cnn_features", 0):.3f}.</p>'
+            '<details class="fc-collapsible"><summary>Full qubit &times; conv-rep sweep</summary>'
+            '<table class="fc-cm-table">'
+            '<tr><th>qubits</th><th>conv reps</th><th>val QWK</th><th>wall time</th></tr>'
+            f'{sweep_rows2}</table></details>'
             '</div>'
         )
     else:
@@ -946,31 +974,34 @@ def build_both_eyes_result_html(probs_pooled, outcome_pooled, grade_pooled, exp_
     )
 
 
-def build_both_eyes_image_html(procL, procR):
-    """Build the both-eyes image comparison: side-by-side preprocessed images."""
+def _eye_image_row(label, proc, cam):
+    """One eye's preprocessed-vs-Grad-CAM row, same visual language as
+    Single Eye's comparison (item 1: both eyes now get Grad-CAM too, not
+    just preprocessed thumbnails)."""
+    if proc is None:
+        return (f'<div class="fc-outcome-note" style="margin:4px 0;">{label}</div>'
+                f'<div class="fc-img-row"><div class="fc-img-placeholder">Not available</div></div>')
+    img_tag = f'<img src="{_numpy_image_to_data_url(proc)}" class="fc-img-main" alt="{label} (preprocessed)">'
+    if cam is not None:
+        gc_tag = f'<img src="{_numpy_image_to_data_url(cam)}" class="fc-img-gradcam" alt="{label} Grad-CAM">'
+    else:
+        gc_tag = '<div class="fc-img-placeholder">Grad-CAM loading&hellip;</div>'
+    return (f'<div class="fc-outcome-note" style="margin:10px 0 4px;">{label}: preprocessed vs. Grad-CAM</div>'
+            f'<div class="fc-img-row">{img_tag}{gc_tag}</div>')
+
+
+def build_both_eyes_image_html(procL, procR, camL=None, camR=None):
+    """Build the both-eyes image comparison: each eye's preprocessed image
+    next to its OWN Grad-CAM heatmap (previously only the raw preprocessed
+    thumbnails were shown, with no attribution evidence for either eye)."""
     if procL is None and procR is None:
         return '<div class="fc-card fc-empty">No images processed.</div>'
 
-    img_tags = ''
-    if procL is not None:
-        img_tags += (f'<img src="{_numpy_image_to_data_url(procL)}" '
-                     f'class="fc-img-main" alt="Left eye (preprocessed)">')
-    else:
-        img_tags += '<div class="fc-img-placeholder">Left eye not available</div>'
-    if procR is not None:
-        img_tags += (f'<img src="{_numpy_image_to_data_url(procR)}" '
-                     f'class="fc-img-main" alt="Right eye (preprocessed)">')
-    else:
-        img_tags += '<div class="fc-img-placeholder">Right eye not available</div>'
-
     return (
         '<div class="fc-card">'
-        '<span class="fc-eyebrow">Preprocessed images</span>'
-        '<div class="fc-img-row">'
-        f'{img_tags}'
-        '</div>'
-        '<div class="fc-outcome-note" style="text-align:center;margin-top:8px;">'
-        'Left eye (preprocessed) &middot; Right eye (preprocessed)</div>'
+        '<span class="fc-eyebrow">Image comparison</span>'
+        f'{_eye_image_row("Left eye", procL, camL)}'
+        f'{_eye_image_row("Right eye", procR, camR)}'
         '</div>'
     )
 
@@ -1004,8 +1035,8 @@ def render_log_html(session_log):
         '<span class="fc-eyebrow">Session Log &middot; this browser session only -- not saved '
         'anywhere, cleared on page reload</span>'
         '<table style="width:100%;border-collapse:collapse;font-family: \'IBM Plex Mono\',monospace;'
-        'font-size:0.72rem;color:var(--fc-text);margin-top:8px;">'
-        '<tr style="color:var(--fc-text-muted);"><th style="text-align:left;">time</th><th>mode</th>'
+        'font-size:0.72rem;color:var(--fc-ink);margin-top:8px;">'
+        '<tr style="color:var(--fc-ink-muted);"><th style="text-align:left;">time</th><th>mode</th>'
         '<th>grade</th><th>name</th><th>outcome</th><th>conf.</th></tr>'
         f'{rows}</table></div>'
     )
@@ -1243,9 +1274,14 @@ def predict_both_eyes(left_image, right_image, session_log):
             mean_pooled = (pooled_l + pooled_r) / 2
             with torch.inference_mode():
                 logits_pooled = MODEL.classifier(mean_pooled)[0].numpy()
-            outcome_pooled = D.classify_outcome(logits_pooled, THRESHOLDS, CALIBRATION_ACTIVE)
-            # Use calibrated probs for pooled
+            # Bug fix: classify_outcome() needs PROBABILITIES (it checks
+            # max(probs) < tau and probs[2:].sum() >= threshold), not raw
+            # logits -- this used to pass logits_pooled directly, which are
+            # unnormalized and not in [0,1], so the pooled outcome was
+            # silently wrong (computed calibrated probs on the very next
+            # line and never used them for this classification).
             probs_pooled = D.calibrated_probs(logits_pooled, THRESHOLDS) if CALIBRATION_ACTIVE else D.raw_probs(logits_pooled)
+            outcome_pooled = D.classify_outcome(probs_pooled, THRESHOLDS, CALIBRATION_ACTIVE)
             grade_pooled = int(probs_pooled.argmax())
             conf_pooled = float(probs_pooled[grade_pooled])
             raw_pooled = D.raw_probs(logits_pooled)
@@ -1256,11 +1292,10 @@ def predict_both_eyes(left_image, right_image, session_log):
             pooling_failed = True
 
     if not both_gradable or pooling_failed:
-        outcome_pooled = D.Outcome.UNGRADABLE
-        probs_pooled = raw_pooled = None
         gradable_logits = logits_l if not quality_l.ungradable else logits_r
-        outcome_pooled = D.classify_outcome(gradable_logits, THRESHOLDS, CALIBRATION_ACTIVE)
+        # Same fix as above: classify on probabilities, computed first.
         probs_pooled = D.calibrated_probs(gradable_logits, THRESHOLDS) if CALIBRATION_ACTIVE else D.raw_probs(gradable_logits)
+        outcome_pooled = D.classify_outcome(probs_pooled, THRESHOLDS, CALIBRATION_ACTIVE)
         grade_pooled = int(probs_pooled.argmax())
         conf_pooled = float(probs_pooled[grade_pooled])
         raw_pooled = D.raw_probs(gradable_logits)
@@ -1306,13 +1341,24 @@ def predict_both_eyes(left_image, right_image, session_log):
         processing_ms, warning_extra, fusion_html,
     )
 
-    image_html = build_both_eyes_image_html(procL, procR)
-
     if both_gradable:
         new_log = session_log + [make_log_entry("Both Eyes", outcome_pooled, probs_pooled, raw_pooled)]
     else:
         new_log = session_log
 
+    # Item 1: Grad-CAM for both eyes. Yield the grade first (no heatmaps
+    # yet), same B5 pacing as Single Eye -- a slow/failing Grad-CAM must
+    # never delay or take down the grade the user already has.
+    image_html = build_both_eyes_image_html(procL, procR, None, None)
+    yield result_card, image_html, new_log, render_log_html(new_log)
+
+    cam_l = cam_r = None
+    if procL is not None and grade_l is not None:
+        cam_l, _ = compute_gradcam_overlay_with_timeout(xL, procL, grade_l)
+    if procR is not None and grade_r is not None:
+        cam_r, _ = compute_gradcam_overlay_with_timeout(xR, procR, grade_r)
+
+    image_html = build_both_eyes_image_html(procL, procR, cam_l, cam_r)
     yield result_card, image_html, new_log, render_log_html(new_log)
 
 
@@ -1393,10 +1439,11 @@ def build_demo():
                     if CURATED_SAMPLES else {}
                 )
                 pair_slot = CURATED_SAMPLES.get("pair") if CURATED_SAMPLES else None
-                single_slots = {
-                    f"{slot} (true grade {v['true_grade']})": v
-                    for slot, v in single_slots_raw.items()
-                }
+                # Item 2: chip labels no longer show the true grade (was
+                # "routine (true grade 0)" etc.) -- ground truth stays in
+                # samples.json for anyone who wants it, just not shown as
+                # a spoiler on the picker itself.
+                single_slots = dict(single_slots_raw)
                 single_choices = ["Upload your own"] + list(single_slots.keys())
 
                 if single_slots:
@@ -1480,15 +1527,6 @@ def build_demo():
                     )
 
         # =================================================================
-        # TAB: Instrument Card -- MASTER_PLAN.md Part 10's own Acceptance
-        # Test 10.1 gauge. This content existed (build_instrument_card_html)
-        # but was never actually called anywhere after the Phase 3 rebuild
-        # replaced the old tab bar -- restored here as its own tab.
-        # =================================================================
-         with gr.Tab("Instrument Card"):
-            gr.HTML(build_instrument_card_html())
-
-        # =================================================================
         # TAB: Quantum Lab -- the QML/QCNN experiment writeups. Same as
         # Instrument Card: defined (build_quantum_lab_html) but orphaned
         # since Phase 3, never rendered anywhere. Restored as its own tab.
@@ -1528,19 +1566,6 @@ def build_demo():
             gr.HTML(evidence.build_c3_literature_html())
 
         # =================================================================
-        # SECTION: Evaluation Integrity -- elem_id="fc-integrity"
-        # =================================================================
-         with gr.Tab("Integrity"), gr.Column(elem_id="fc-integrity"):
-            gr.HTML(evidence.build_c4_integrity_html())
-
-        # =================================================================
-        # SECTION: Evidence -- elem_id="fc-evidence"
-        # =================================================================
-         with gr.Tab("Evidence"), gr.Column(elem_id="fc-evidence"):
-            gr.HTML(evidence.build_c5_evidence_html())
-            gr.HTML(evidence.build_c6_prediction_record_html())
-
-        # =================================================================
         # SECTION: Trained Model Comparison -- elem_id="fc-models" (item 5)
         # =================================================================
          with gr.Tab("Models"), gr.Column(elem_id="fc-models"):
@@ -1552,17 +1577,7 @@ def build_demo():
          with gr.Tab("Built"), gr.Column(elem_id="fc-built"):
             gr.HTML(evidence.build_c7_built_html())
             gr.HTML(evidence.build_c8_limitations_html())
-
-        # =================================================================
-        # SECTION: About -- elem_id="fc-about"
-        # =================================================================
-         with gr.Tab("About"), gr.Column(elem_id="fc-about"):
-            gr.HTML(evidence.build_c9_about_html())
             gr.Markdown(build_model_info_md(METRICS))
-            gr.Markdown(
-                "----\n" + build_disclaimer_md(),
-                elem_classes=["***"],
-            )
             gr.Markdown(
                 "*Photos are processed in memory and removed from temporary "
                 "storage within an hour. Nothing is kept or used for training.*",
@@ -1570,6 +1585,14 @@ def build_demo():
             )
             with gr.Accordion("System status", open=False):
                 gr.HTML(build_status_panel_html())
+            # Instrument Card, Evaluation Integrity, Evidence, and About
+            # (as their own tabs) were removed per explicit request --
+            # build_instrument_card_html()/build_c4_integrity_html()/
+            # build_c5_evidence_html()/build_c6_prediction_record_html()/
+            # build_c9_about_html() still exist and still work, just
+            # aren't called from build_demo() anymore. The main disclaimer
+            # (build_disclaimer_md()) is still shown once, at the top of
+            # the page, so removing About didn't drop the safety copy.
 
         # =================================================================
         # Event wiring (must come after all components exist above)

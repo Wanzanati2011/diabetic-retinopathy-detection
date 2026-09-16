@@ -47,7 +47,7 @@ def build_pdf_export(session_log, model_sha12: str, calibration_active: bool,
         pdf.set_auto_page_break(auto=True, margin=15)
         pdf.add_page()
         pdf.set_font("Helvetica", "B", 16)
-        pdf.cell(0, 10, "Fundus Console -- Session Log")
+        pdf.cell(0, 10, "Diabetic Retinopathy Detector -- Session Log")
         pdf.ln(12)
 
         pdf.set_font("Helvetica", "", 8)
