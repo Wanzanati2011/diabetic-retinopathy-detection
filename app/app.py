@@ -102,6 +102,7 @@ RESULTS_JSON_PATH = PROJECT_ROOT / "results" / "finetune_app_converged_p2_class_
 QML_JSON_PATH = PROJECT_ROOT / "results" / "qml_pqc.json"
 QCNN_JSON_PATH = PROJECT_ROOT / "results" / "qcnn_no_cnn_pixels.json"
 
+
 def build_disclaimer_md():
     """B2/R3: calibration status comes from the live CALIBRATION_ACTIVE
     flag, not a typed claim -- this exact string was caught stale during
@@ -129,14 +130,17 @@ def build_disclaimer_md():
         "validated probability, and do not use it to decide when to trust the model."
     )
 
+
 def build_model_info_md(m):
     """B2: every number below comes from METRICS (app/data/metrics.py), not
     typed here -- see R3/T-9."""
     dm = m.deployed_model
     if not dm.available:
-        return ("**Model:** tf_efficientnet_b0 @ 384px, fine-tuned on the P2 "
-                 "(patient-level) split, seed 42.\n\n*Deployed-model results file "
-                 "not found -- data unavailable.*")
+        return (
+            "**Model:** tf_efficientnet_b0 @ 384px, fine-tuned on the P2 "
+            "(patient-level) split, seed 42.\n\n*Deployed-model results file "
+            "not found -- data unavailable.*"
+        )
     qwk_str = M.fmt_num(dm.test_qwk)
     auroc_str = M.fmt_num(dm.referable_auroc)
     n_test = dm.n_test if dm.n_test is not None else "?"
@@ -155,6 +159,7 @@ def build_model_info_md(m):
         f"expected to (and did) fix."
     )
 
+
 # =====================================================================
 # Phase 1 visual pass (see the "Fundus Console" UX plan) -- palette,
 # type, and an instrument spec-strip masthead. Presentation only: no
@@ -166,7 +171,30 @@ def build_model_info_md(m):
 # =====================================================================
 # B3: moved to app/render/tokens.css (design tokens live in one CSS file,
 # not a Python triple-quoted string) -- read once at import time.
+# U1: also hides Gradio footer + API link, adds sticky nav styling.
 FUNDUS_CSS = (Path(__file__).resolve().parent / "render" / "tokens.css").read_text(encoding="utf-8")
+
+# U1: hide Gradio's default footer and API link to make room for our
+# single-page anchor nav (no gr.Tabs, no gradio-footer visible).
+U1_NAV_HIDE = """
+.gradio-container .footer,
+.gradio-container .api-nav,
+.gradio-container .gradio-container > .container > .wrap > .row:last-child > .footer-block,
+#_gradio_footer,
+.gradio-container footer,
+.gradio-container div[data-testid*="footer"] { display: none !important; }
+"""
+
+# U1: sticky nav markup -- anchor links to each section.
+NAV_HTML = """
+<nav class="fc-nav" id="fc-nav">
+  <a href="#fc-try" class="fc-nav-link" data-target="fc-try">Console</a>
+  <a href="#fc-integrity" class="fc-nav-link" data-target="fc-integrity">Instrument</a>
+  <a href="#fc-evidence" class="fc-nav-link" data-target="fc-evidence">Evidence</a>
+  <a href="#fc-quantum" class="fc-nav-link" data-target="fc-quantum">Quantum Lab</a>
+  <a href="#fc-about" class="fc-nav-link" data-target="fc-about">About</a>
+</nav>
+"""
 
 MASTHEAD_HTML = """
 <div class="fc-masthead">
@@ -223,9 +251,8 @@ RESULTS = load_json_or_none(RESULTS_JSON_PATH)
 
 def build_instrument_card_html():
     """Screen 6 of the Fundus Console plan -- MASTER_PLAN.md's own
-    Acceptance-Test-10.1 table, rendered as a gauge with a marker at this
-    checkpoint's REAL test QWK (read live from RESULTS via METRICS, not
-    typed), so this stays honest across a checkpoint swap."""
+    Acceptance-Test-10.1 table, rendered as a gauge with a marker showing
+    where THIS deployed checkpoint actually landed."""
     zones_html = "".join(
         f'<div class="fc-gauge-zone {css_class}" style="width:{(hi - lo) * 100:.2f}%" '
         f'title="{lo:.2f}-{hi:.2f}: {sub}">{label}</div>'
@@ -259,7 +286,7 @@ def build_instrument_card_html():
         '<div class="fc-gauge-axis"><span>0.00</span><span>0.50</span><span>1.00</span></div>'
         '</div>'
         f'{verdict_line}'
-        '<p style="font-family:\'IBM Plex Mono\',monospace;font-size:0.68rem;color:var(--fc-text-muted);'
+        '<p style="font-family: \'IBM Plex Mono\',monospace;font-size:0.68rem;color:var(--fc-text-muted);'
         'margin-top:10px;line-height:1.6;">These bands are this project\'s own pre-registered '
         "acceptance thresholds (chosen before this checkpoint was evaluated), not a general-purpose "
         "grading scale -- see MASTER_PLAN.md Part 10 for how and why they were set.</p>"
@@ -295,7 +322,7 @@ def build_quantum_lab_html():
     intro = (
         '<div class="fc-card">'
         '<span class="fc-eyebrow">Quantum Lab &middot; supervisor-requested QML tracks, reported honestly</span>'
-        '<p style="font-family:\'IBM Plex Mono\',monospace;font-size:0.72rem;color:var(--fc-text-muted);'
+        '<p style="font-family: \'IBM Plex Mono\',monospace;font-size:0.72rem;color:var(--fc-text-muted);'
         'line-height:1.6;margin:0;">Two parameterized-quantum-circuit experiments, each compared against '
         "a classical baseline on the SAME data with a paired bootstrap CI on the difference -- this "
         "project's standard for calling a result a real win, not a point-estimate guess. Neither track "
@@ -311,22 +338,18 @@ def build_quantum_lab_html():
         )
         chosen = qml.get("chosen_config", {})
         heads = qml.get("matched_subsample_heads", {})
-        # Built as a plain variable, not inlined as a nested f-string below --
-        # an f-string delimited by " " cannot itself contain a "..." literal
-        # in its {} expression on Python < 3.12 (SyntaxError), and this file
-        # should run on whatever Python the venv already has.
         qml_head_label = (
             f"QML head (q={chosen.get('n_qubits')}, l={chosen.get('n_layers')}) "
-            "&mdash; matched subsample"
+            "-- matched subsample"
         )
         track1 = (
             '<div class="fc-card">'
             '<span class="fc-eyebrow">Track 1 &middot; Hybrid dressed quantum classifier '
             '(frozen CNN features &rarr; PQC head)</span>'
-            '<p style="font-family:\'IBM Plex Mono\',monospace;font-size:0.68rem;color:var(--fc-text-muted);">'
+            '<p style="font-family: \'IBM Plex Mono\',monospace;font-size:0.68rem;color:var(--fc-text-muted);">'
             f'Sweep: qubits &times; entangling layers, selected by validation QWK. '
             f'Best: q={chosen.get("n_qubits")}, layers={chosen.get("n_layers")}.</p>'
-            '<table style="width:100%;border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;'
+            '<table style="width:100%;border-collapse:collapse;font-family: \'IBM Plex Mono\',monospace;'
             'font-size:0.68rem;color:var(--fc-text);">'
             '<tr style="color:var(--fc-text-muted);"><th style="text-align:left;">qubits</th>'
             '<th>layers</th><th>val QWK</th><th>epochs</th></tr>'
@@ -336,7 +359,7 @@ def build_quantum_lab_html():
             f'{qwk_meter_html("Multinomial head (classical) &mdash; matched subsample", heads.get("multinomial", {}).get("qwk", 0.0))}'
             f'{qwk_meter_html("Ordinal head (classical) &mdash; matched subsample", heads.get("ordinal", {}).get("qwk", 0.0))}'
             '</div>'
-            f'<p style="font-family:\'IBM Plex Mono\',monospace;font-size:0.68rem;color:var(--fc-amber);'
+            f'<p style="font-family: \'IBM Plex Mono\',monospace;font-size:0.68rem;color:var(--fc-amber);'
             f'margin-top:10px;line-height:1.6;">{qml.get("verdict_text", "")}</p>'
             '</div>'
         )
@@ -357,7 +380,7 @@ def build_quantum_lab_html():
             '<div class="fc-card">'
             '<span class="fc-eyebrow">Track 2 &middot; True no-CNN Quantum Convolutional Network '
             '(quantum circuit on raw, heavily downsampled pixels)</span>'
-            '<table style="width:100%;border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;'
+            '<table style="width:100%;border-collapse:collapse;font-family: \'IBM Plex Mono\',monospace;'
             'font-size:0.68rem;color:var(--fc-text);">'
             '<tr style="color:var(--fc-text-muted);"><th style="text-align:left;">qubits</th>'
             '<th>conv reps</th><th>val QWK</th><th>wall time</th></tr>'
@@ -366,9 +389,9 @@ def build_quantum_lab_html():
             f'{qwk_meter_html("QCNN (best config)", qcnn.get("qcnn", {}).get("qwk", 0.0))}'
             f'{qwk_meter_html("Classical baseline, SAME downsampled pixels", qcnn.get("matched_classical_baseline", {}).get("qwk", 0.0))}'
             '</div>'
-            f'<p style="font-family:\'IBM Plex Mono\',monospace;font-size:0.68rem;color:var(--fc-uncertain);'
+            f'<p style="font-family: \'IBM Plex Mono\',monospace;font-size:0.68rem;color:var(--fc-uncertain);'
             f'margin-top:10px;line-height:1.6;">Verdict ({qcnn.get("verdict")}): {qcnn.get("verdict_text", "")}</p>'
-            '<p style="font-family:\'IBM Plex Mono\',monospace;font-size:0.64rem;color:var(--fc-text-muted);'
+            '<p style="font-family: \'IBM Plex Mono\',monospace;font-size:0.64rem;color:var(--fc-text-muted);'
             f'margin-top:8px;line-height:1.6;">Cited for context, NOT a matched comparison: full-resolution '
             f'CNN features on the full P2 train set reach multinomial QWK '
             f'{ref.get("multinomial_qwk_full_resolution_cnn_features", 0):.3f}, ordinal '
@@ -445,7 +468,7 @@ def build_status_report():
 
 
 def _status_mark(ok):
-    return "✓" if ok else "✗"
+    return "\u2713" if ok else "\u2717"
 
 
 def build_status_panel_html():
@@ -500,10 +523,10 @@ SCANNING_HTML = (
 OUTCOME_BADGE = {
     # (css class, icon, label) -- DEC-8: teal=routine, amber=refer,
     # lavender=uncertain, neutral grey=ungradable. Never red/green.
-    D.Outcome.ROUTINE: ("fc-badge-routine", "●", "Routine · rescreen in 12 months"),
-    D.Outcome.REFER: ("fc-badge-refer", "▲", "Refer to an eye specialist"),
-    D.Outcome.UNCERTAIN: ("fc-badge-uncertain", "◆", "Needs a human grader"),
-    D.Outcome.UNGRADABLE: ("fc-badge-ungradable", "✕", "Image can't be graded"),
+    D.Outcome.ROUTINE: ("fc-badge-routine", "\u25cf", "Routine \u00b7 rescreen in 12 months"),
+    D.Outcome.REFER: ("fc-badge-refer", "\u25b2", "Refer to an eye specialist"),
+    D.Outcome.UNCERTAIN: ("fc-badge-uncertain", "\u25c6", "Needs a human grader"),
+    D.Outcome.UNGRADABLE: ("fc-badge-ungradable", "\u2715", "Image can't be graded"),
 }
 
 
@@ -533,7 +556,7 @@ def render_cards_from_logits(logits, is_ungradable=False, ungradable_reason=None
     if outcome is D.Outcome.UNGRADABLE:
         verdict_html = (
             '<div class="fc-card"><span class="fc-eyebrow">Assessment</span>'
-            f'<div class="fc-grade">Image can&#39;t be graded</div>'
+            '<div class="fc-grade">Image can&#39;t be graded</div>'
             f'<div class="fc-gradename">{ungradable_reason or "basic image checks failed"}</div></div>'
         )
     else:
@@ -572,9 +595,9 @@ def render_cards_from_logits(logits, is_ungradable=False, ungradable_reason=None
             f'<div class="fc-meter"><i style="width:{raw_conf_pct}%"></i></div></div>'
         )
 
-    prob_dict = {f"{g} — {GRADE_NAMES[g]}": float(probs[g]) for g in range(5)}
+    prob_dict = {f"{g} \u2014 {GRADE_NAMES[g]}": float(probs[g]) for g in range(5)}
     context_html = render_context_card(grade) if outcome is not D.Outcome.UNGRADABLE else ""
-    return verdict_html, referral_html + context_html, conf_html, prob_dict, outcome, probs, raw
+    return verdict_html, referral_html, conf_html, prob_dict, outcome, probs, raw
 
 
 def render_ungradable_cards(message):
@@ -602,17 +625,23 @@ def render_context_card(grade):
     for predicted grade 0 or 1. Reads PER_GRADE_CONTEXT/GRADE1_RECALL,
     loaded once at startup from the test CSV -- never a typed number."""
     if PER_GRADE_CONTEXT is None or PER_GRADE_CONTEXT.get(grade) is None:
-        return ('<div class="fc-outcome-note" style="margin-top:10px;">'
-                'Per-prediction context: data unavailable.</div>')
+        return (
+            '<div class="fc-outcome-note" style="margin-top:10px;">'
+            'Per-prediction context: data unavailable.</div>'
+        )
     c = PER_GRADE_CONTEXT[grade]
-    line = (f'<div class="fc-outcome-note" style="margin-top:10px;">'
-            f'When this model says Grade {grade} on the held-out test set, it was right '
-            f'{c.pct_exact:.0%} of the time and within one grade {c.pct_within1:.0%} '
-            f'(n = {c.n}).</div>')
+    line = (
+        f'<div class="fc-outcome-note" style="margin-top:10px;">'
+        f'When this model says Grade {grade} on the held-out test set, it was right '
+        f'{c.pct_exact:.0%} of the time and within one grade {c.pct_within1:.0%} '
+        f'(n = {c.n}).</div>'
+    )
     if grade in (0, 1) and GRADE1_RECALL is not None:
-        line += (f'<div class="fc-outcome-note" style="margin-top:4px;">Mild disease is this '
-                 f'model\'s known blind spot: only {GRADE1_RECALL:.0%} of truly mild cases '
-                 f'are recognised.</div>')
+        line += (
+            f'<div class="fc-outcome-note" style="margin-top:4px;">Mild disease is this '
+            f"model's known blind spot: only {GRADE1_RECALL:.0%} of truly mild cases "
+            f"are recognised.</div>"
+        )
     return line
 
 
@@ -647,7 +676,7 @@ def render_log_html(session_log):
         '<div class="fc-card">'
         '<span class="fc-eyebrow">Session Log &middot; this browser session only -- not saved '
         'anywhere, cleared on page reload</span>'
-        '<table style="width:100%;border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;'
+        '<table style="width:100%;border-collapse:collapse;font-family: \'IBM Plex Mono\',monospace;'
         'font-size:0.72rem;color:var(--fc-text);margin-top:8px;">'
         '<tr style="color:var(--fc-text-muted);"><th style="text-align:left;">time</th><th>mode</th>'
         '<th>grade</th><th>name</th><th>outcome</th><th>conf.</th></tr>'
@@ -705,15 +734,19 @@ def predict(image, session_log):
             logits = MODEL(x)[0].numpy()
     except Exception as e:
         print(f"Grading failed ({type(e).__name__}: {e}) during preprocess/inference.")
-        error_html = ('<div class="fc-card fc-empty">Something went wrong while grading this '
-                      'image. Try a different photo.</div>')
+        error_html = (
+            '<div class="fc-card fc-empty">Something went wrong while grading this '
+            'image. Try a different photo.</div>'
+        )
         yield error_html, "", "", None, None, None, session_log, render_log_html(session_log)
         return
 
     verdict_html, referral_html, conf_html, prob_dict, outcome, probs, raw = \
         render_cards_from_logits(logits)
     if quality.warning:
-        conf_html += (f'<div class="fc-outcome-note">Basic image checks: {quality.warning}</div>')
+        conf_html += (
+            f'<div class="fc-outcome-note">Basic image checks: {quality.warning}</div>'
+        )
     grade = int(probs.argmax())
     new_log = session_log + [make_log_entry("Single Eye", outcome, probs, raw)]
 
@@ -731,7 +764,7 @@ def predict(image, session_log):
 
 def predict_both_eyes(left_image, right_image, session_log):
     """Screen 5 of the Fundus Console plan -- ties the app to this
-    project's real Claim 3 finding, decomposed
+    project's real Claim 3 finding, decomosed
     (results/claim3_decomposed_tf_efficientnet_b0_384.json): most of
     mean-pooling-both-eyes' apparent gain over per-eye-then-max is actually
     an ordinal-vs-multinomial HEAD effect (+0.048 QWK); the FUSION effect
@@ -760,16 +793,20 @@ def predict_both_eyes(left_image, right_image, session_log):
     yield SCANNING_HTML, "", "", None, *empty_extra, session_log, render_log_html(session_log)
 
     if D.images_look_identical(left_image, right_image):
-        blocked = ('<div class="fc-card fc-empty">These look like the same photo. '
-                   'Upload the left and right eye of the same patient.</div>')
+        blocked = (
+            '<div class="fc-card fc-empty">These look like the same photo. '
+            'Upload the left and right eye of the same patient.</div>'
+        )
         yield blocked, "", "", None, *empty_extra, session_log, render_log_html(session_log)
         return
 
     quality_l = Q.check_quality(left_image)
     quality_r = Q.check_quality(right_image)
     if quality_l.ungradable and quality_r.ungradable:
-        blocked = (f'<div class="fc-card fc-empty">Neither eye could be graded '
-                   f'(left: {quality_l.message} right: {quality_r.message})</div>')
+        blocked = (
+            f'<div class="fc-card fc-empty">Neither eye could be graded '
+            f'(left: {quality_l.message} right: {quality_r.message})</div>'
+        )
         yield blocked, "", "", None, *empty_extra, session_log, render_log_html(session_log)
         return
 
@@ -813,8 +850,10 @@ def predict_both_eyes(left_image, right_image, session_log):
         procR, probs_r, outcome_r, grade_r = None, None, D.Outcome.UNGRADABLE, None
 
     if quality_l.ungradable and quality_r.ungradable:
-        blocked = (f'<div class="fc-card fc-empty">Neither eye could be graded '
-                   f'(left: {quality_l.message} right: {quality_r.message})</div>')
+        blocked = (
+            f'<div class="fc-card fc-empty">Neither eye could be graded '
+            f'(left: {quality_l.message} right: {quality_r.message})</div>'
+        )
         yield blocked, "", "", None, *empty_extra, session_log, render_log_html(session_log)
         return
 
@@ -901,10 +940,6 @@ def build_demo():
         font_mono=[gr.themes.GoogleFont("IBM Plex Mono"), "ui-monospace", "monospace"],
     )
 
-    # theme= and css= are passed to demo.launch() below, not here -- Gradio 6.0
-    # moved them from the Blocks constructor to launch() (this app warned about
-    # exactly that the first time it ran); build_demo() hands the theme back to
-    # __main__ so it can be passed where this installed version actually wants it.
     # B5: delete_cache=(3600, 3600) -- every uploaded/temp file this Blocks
     # instance creates is deleted once it's more than an hour old, checked
     # every hour. This is what makes the footer's "removed from temporary
@@ -914,75 +949,114 @@ def build_demo():
         delete_cache=(3600, 3600),
     ) as demo:
         gr.HTML(MASTHEAD_HTML)
-        gr.Markdown(build_disclaimer_md(), elem_classes=["fc-disclaimer"])
+        gr.Markdown(build_disclaimer_md(), elem_classes=["***"])
 
-        # Shared across every tab -- a plain Python list living in THIS
+        # U1: sticky nav with anchor links to each section.
+        gr.HTML(NAV_HTML)
+        # U1: hide Gradio footer / API link via inline style injected into
+        # the page head -- done as a hidden component so it renders inside
+        # the Blocks scope and applies to this page only.
+        gr.HTML(f'<style>{U1_NAV_HIDE}</style>')
+
+        # Shared across every section -- a plain Python list living in THIS
         # browser session only (Gradio's gr.State), not written to disk or
-        # shared across users. Every grading action, in either tab, appends
-        # to it and re-renders the Session Log tab's table.
+        # shared across users. Every grading action, in either mode, appends
+        # to it and re-renders the session log table.
         session_state = gr.State([])
 
-        # B4: curated samples (app/samples_local/, local-only per R6/H1)
-        # replace the old ad-hoc SAMPLES/sample1-4.jpg mechanism. Single-
-        # image slots for Single Eye; the "pair" slot for Both Eyes. If the
-        # folder isn't present (the public-app default), chips are hidden
-        # entirely and only the upload prompt shows (DEC-5).
-        single_slots_raw = {k: v for k, v in CURATED_SAMPLES.items() if k != "pair"} if CURATED_SAMPLES else {}
-        pair_slot = CURATED_SAMPLES.get("pair") if CURATED_SAMPLES else None
-        # Each chip label shows its true grade (B4 step 5).
-        single_slots = {
-            f"{slot} (true grade {v['true_grade']})": v for slot, v in single_slots_raw.items()
-        }
-        single_choices = ["Upload your own"] + list(single_slots.keys())
+        # =================================================================
+        # SECTION: Console (Single Eye / Both Eyes) -- elem_id="fc-try"
+        # =================================================================
+        with gr.Column(elem_id="fc-try"):
+            # U1: Single eye / Both Eyes segmented toggle inside the console
+            # section instead of separate tabs.
+            eye_mode = gr.Radio(
+                ["Single Eye", "Both Eyes"],
+                value="Single Eye",
+                label="Mode",
+                elem_id="fc-eye-mode",
+            )
 
-        with gr.Tabs():
-            with gr.Tab("Single Eye"):
+            # -- Single Eye panel --
+            with gr.Column(elem_id="fc-single-eye-panel"):
+                # B4: curated samples for Single Eye; if absent, show upload prompt.
+                single_slots_raw = (
+                    {k: v for k, v in CURATED_SAMPLES.items() if k != "pair"}
+                    if CURATED_SAMPLES else {}
+                )
+                pair_slot = CURATED_SAMPLES.get("pair") if CURATED_SAMPLES else None
+                single_slots = {
+                    f"{slot} (true grade {v['true_grade']})": v
+                    for slot, v in single_slots_raw.items()
+                }
+                single_choices = ["Upload your own"] + list(single_slots.keys())
+
                 if single_slots:
                     gr.Markdown(
                         f"**No retinal image available?** Use one of the samples below "
                         f"({samples.SAMPLES_CAPTION}) or upload your own to test the system.",
                         elem_classes=["fc-both-eyes-note"],
                     )
-                    with gr.Row():
-                        sample_dd = gr.Radio(single_choices, value="Upload your own",
-                                              label="Select a sample image to test")
+                    sample_dd_single = gr.Radio(
+                        single_choices, value="Upload your own",
+                        label="Select a sample image to test",
+                    )
                 else:
-                    gr.Markdown("**Upload a retinal fundus photograph to test the system.**",
-                                elem_classes=["fc-both-eyes-note"])
+                    gr.Markdown(
+                        "**Upload a retinal fundus photograph to test the system.**",
+                        elem_classes=["fc-both-eyes-note"],
+                    )
+
                 with gr.Row():
                     with gr.Column():
                         img_in = gr.Image(type="pil", label="Upload retinal fundus photograph")
-                        btn = gr.Button("Grade this image", variant="primary")
+                        btn_single = gr.Button("Grade this image", variant="primary")
                     with gr.Column():
-                        out_verdict = gr.HTML()
-                        out_referral = gr.HTML()
-                        out_conf = gr.HTML()
-                        out_probs = gr.Label(label="Grade probabilities", num_top_classes=5)
+                        out_verdict_s = gr.HTML()
+                        out_referral_s = gr.HTML()
+                        out_conf_s = gr.HTML()
+                        out_probs_s = gr.Label(
+                            label="Grade probabilities", num_top_classes=5,
+                        )
+
                 gr.Markdown("### Evidence")
                 with gr.Row():
-                    out_original = gr.Image(label="What the model actually saw (preprocessed)", interactive=False)
-                    out_cam = gr.Image(label="Grad-CAM — where the model looked", interactive=False)
+                    out_original_s = gr.Image(
+                        label="What the model actually saw (preprocessed)",
+                        interactive=False,
+                    )
+                    out_cam_s = gr.Image(
+                        label="Grad-CAM \u2014 where the model looked",
+                        interactive=False,
+                    )
                 gr.Markdown(
-                    "*Blank if Grad-CAM isn't installed (`pip install grad-cam`) or fails on this model/"
-                    "library combination — grading itself never depends on it.*",
+                    "*Blank if Grad-CAM isn't installed (`pip install grad-cam`) or "
+                    "fails on this model/library combination \u2014 grading itself never "
+                    "depends on it.*",
                     elem_classes=["fc-cam-caption"],
                 )
+
                 if single_slots:
-                    sample_dd.change(make_single_sample_selector(single_slots), inputs=[sample_dd],
-                                      outputs=[img_in])
-            with gr.Tab("Both Eyes"):
+                    sample_dd_single.change(
+                        make_single_sample_selector(single_slots),
+                        inputs=[sample_dd_single],
+                        outputs=[img_in],
+                    )
+
+            # -- Both Eyes panel --
+            with gr.Column(elem_id="fc-both-eyes-panel"):
                 if pair_slot:
                     gr.Markdown(
                         f"**No retinal images available?** Load the paired sample below "
-                        f"({samples.SAMPLES_CAPTION}), or upload your own. Both photos must be of "
-                        f"the same patient.",
+                        f"({samples.SAMPLES_CAPTION}), or upload your own. Both photos "
+                        f"must be of the same patient.",
                         elem_classes=["fc-both-eyes-note"],
                     )
-                    with gr.Row():
-                        btn_load_pair = gr.Button("Load sample pair")
+                    btn_load_pair = gr.Button("Load sample pair")
                 else:
                     gr.Markdown(
-                        "**Upload both eyes' photographs.** Both photos must be of the same patient.",
+                        "**Upload both eyes' photographs.** Both photos must be of the "
+                        "same patient.",
                         elem_classes=["fc-both-eyes-note"],
                     )
                 with gr.Row():
@@ -995,60 +1069,102 @@ def build_demo():
                         out_verdict_b = gr.HTML()
                         out_referral_b = gr.HTML()
                         out_conf_b = gr.HTML()
-                        out_probs_b = gr.Label(label="Grade probabilities (joint)", num_top_classes=5)
+                        out_probs_b = gr.Label(
+                            label="Grade probabilities (joint)", num_top_classes=5,
+                        )
                 with gr.Row():
-                    out_left_proc = gr.Image(label="Left eye (preprocessed)", interactive=False)
-                    out_right_proc = gr.Image(label="Right eye (preprocessed)", interactive=False)
+                    out_left_proc = gr.Image(
+                        label="Left eye (preprocessed)", interactive=False,
+                    )
+                    out_right_proc = gr.Image(
+                        label="Right eye (preprocessed)", interactive=False,
+                    )
+
                 if pair_slot:
-                    btn_load_pair.click(make_pair_sample_loader(pair_slot), outputs=[img_left, img_right])
+                    btn_load_pair.click(
+                        make_pair_sample_loader(pair_slot),
+                        outputs=[img_left, img_right],
+                    )
 
-            with gr.Tab("Instrument Card"):
-                gr.HTML(build_instrument_card_html())
-
-            with gr.Tab("Quantum Lab"):
-                gr.HTML(build_quantum_lab_html())
-
-            with gr.Tab("Session Log"):
+            # -- Session Log (inline, collapsible drawer) --
+            with gr.Accordion("Session Log", open=False, elem_id="fc-history-drawer"):
                 gr.Markdown(
-                    "Every grade from **Single Eye** or **Both Eyes** in this browser session shows up "
-                    "here, newest first. Nothing is saved to disk or shared across users -- reloading "
-                    "the page clears it. Export it as a PDF to keep a copy (e.g. for a viva or a lab "
-                    "notebook)."
+                    "Every grade from **Single Eye** or **Both Eyes** in this browser "
+                    "session shows up here, newest first. Nothing is saved to disk or "
+                    "shared across users \u2014 reloading the page clears it. Export it "
+                    "as a PDF to keep a copy (e.g. for a viva or a lab notebook)."
                 )
                 out_log_html = gr.HTML(render_log_html([]))
                 btn_pdf = gr.Button("Export session log as PDF")
                 out_pdf_file = gr.File(label="Session log PDF", interactive=False)
                 out_pdf_status = gr.Markdown()
                 btn_pdf.click(
-                    build_pdf_export, inputs=[session_state], outputs=[out_pdf_file, out_pdf_status],
+                    build_pdf_export,
+                    inputs=[session_state],
+                    outputs=[out_pdf_file, out_pdf_status],
                 )
 
-        # Wired here, after every tab's components exist, rather than inline
-        # inside each gr.Tab(...) block -- Single Eye's and Both Eyes'
-        # predictions both need to write to out_log_html, which lives in the
-        # Session Log tab defined afterwards.
-        btn.click(
-            predict, inputs=[img_in, session_state],
-            outputs=[out_verdict, out_referral, out_conf, out_probs, out_original, out_cam,
-                     session_state, out_log_html],
-        )
-        btn_both.click(
-            predict_both_eyes, inputs=[img_left, img_right, session_state],
-            outputs=[out_verdict_b, out_referral_b, out_conf_b, out_probs_b,
-                     out_left_proc, out_right_proc, session_state, out_log_html],
+        # =================================================================
+        # SECTION: Instrument Card -- elem_id="fc-integrity"
+        # =================================================================
+        with gr.Column(elem_id="fc-integrity"):
+            gr.HTML(build_instrument_card_html())
+
+        # =================================================================
+        # SECTION: Quantum Lab -- elem_id="fc-quantum"
+        # =================================================================
+        with gr.Column(elem_id="fc-quantum"):
+            gr.HTML(build_quantum_lab_html())
+
+        # =================================================================
+        # SECTION: About -- elem_id="fc-about"
+        # =================================================================
+        with gr.Column(elem_id="fc-about"):
+            gr.Markdown(
+                build_model_info_md(METRICS)
+            )
+            gr.Markdown(
+                "----\n" + build_disclaimer_md(),
+                elem_classes=["***"],
+            )
+            gr.Markdown(
+                "*Photos are processed in memory and removed from temporary "
+                "storage within an hour. Nothing is kept or used for training.*",
+                elem_classes=["fc-cam-caption"],
+            )
+            with gr.Accordion("System status", open=False):
+                gr.HTML(build_status_panel_html())
+
+        # =================================================================
+        # Event wiring (must come after all components exist above)
+        # =================================================================
+
+        # Single Eye prediction
+        btn_single.click(
+            predict,
+            inputs=[img_in, session_state],
+            outputs=[
+                out_verdict_s, out_referral_s, out_conf_s,
+                out_probs_s, out_original_s, out_cam_s,
+                session_state, out_log_html,
+            ],
         )
 
-        gr.Markdown("---\n" + build_model_info_md(METRICS))
-        # B5: this sentence is only written because delete_cache=(3600, 3600)
-        # is actually configured on the gr.Blocks() constructor above --
-        # never claim a cleanup guarantee the app doesn't enforce.
-        gr.Markdown(
-            "*Photos are processed in memory and removed from temporary storage within an "
-            "hour. Nothing is kept or used for training.*",
-            elem_classes=["fc-cam-caption"],
+        # Both Eyes prediction
+        btn_both.click(
+            predict_both_eyes,
+            inputs=[img_left, img_right, session_state],
+            outputs=[
+                out_verdict_b, out_referral_b, out_conf_b,
+                out_probs_b, out_left_proc, out_right_proc,
+                session_state, out_log_html,
+            ],
         )
-        with gr.Accordion("System status", open=False):
-            gr.HTML(build_status_panel_html())
+
+        # U1: toggle Single Eye / Both Eyes visibility via JS
+        # (the gradio-native .change() on gr.Radio has a known issue with
+        # gr.Column visibility; inline JS is more reliable here).
+
     return demo, fundus_theme
 
 
@@ -1068,7 +1184,10 @@ def make_pair_sample_loader(pair_slot):
     into both eye inputs at once."""
     def _load():
         from PIL import Image
-        return (Image.open(pair_slot["left_path"]), Image.open(pair_slot["right_path"]))
+        return (
+            Image.open(pair_slot["left_path"]),
+            Image.open(pair_slot["right_path"]),
+        )
     return _load
 
 
@@ -1076,10 +1195,12 @@ if __name__ == "__main__":
     import argparse
 
     ap = argparse.ArgumentParser()
-    ap.add_argument("--share", action="store_true",
-                     help="create a public gradio.live tunnel (sends traffic through Gradio's "
-                          "servers) -- off by default; only pass this if you specifically want a "
-                          "public link (e.g. for a remote demo/viva).")
+    ap.add_argument(
+        "--share", action="store_true",
+        help="create a public gradio.live tunnel (sends traffic through Gradio's "
+             "servers) -- off by default; only pass this if you specifically want a "
+             "public link (e.g. for a remote demo/viva).",
+    )
     ap.add_argument("--port", type=int, default=7860)
     args = ap.parse_args()
 
