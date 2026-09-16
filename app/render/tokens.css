@@ -31,6 +31,16 @@
   --fc-lavender-soft:#27223D;
   --fc-ungradable:   #A39A8A;
   --fc-ungradable-soft:#2A2823;
+
+  /* Spacing/radius scale -- referenced throughout (section padding, chip
+     radius) but never actually defined, so every var(--fc-sp-*) rule was
+     silently resolving to 0 padding. */
+  --fc-sp-8:  8px;
+  --fc-sp-16: 16px;
+  --fc-sp-24: 24px;
+  --fc-sp-32: 32px;
+  --fc-sp-48: 48px;
+  --fc-radius-chip: 999px;
 }
 
 /* ---- Body & Gradio chrome override ---- */
@@ -593,3 +603,325 @@ html, body {
 
 /* ---- Section anchors for scroll offset (account for sticky nav) ---- */
 .fc-section { scroll-margin-top: 72px; }
+#fc-try, #fc-results, #fc-integrity, #fc-evidence, #fc-built, #fc-about,
+#fc-log, #fc-models {
+  scroll-margin-top: 72px;
+}
+
+/* ====================================================================
+   Evidence sections (C1-C9) -- these classes were referenced by
+   app/render/evidence.py since Phase 4 landed but never defined here,
+   so every evidence section rendered as unstyled default HTML (visible
+   as plain bullet lists / borderless tables on the dark background).
+   ==================================================================== */
+
+.fc-section-card {
+  background: var(--fc-surface-2);
+  border: 1px solid var(--fc-line);
+  border-radius: 16px;
+  padding: 20px 22px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset;
+}
+.fc-section-card h3 {
+  font-family: "Fraunces", ui-serif, Georgia, serif !important;
+  font-weight: 560;
+  font-size: 1.25rem;
+  color: var(--fc-ink);
+  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fc-section-card h4 {
+  font-family: "Inter", sans-serif !important;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fc-ink);
+  margin: 18px 0 8px;
+}
+.fc-section-card p {
+  font-family: "Inter", sans-serif !important;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--fc-ink-muted);
+  margin: 0 0 8px;
+}
+.fc-section-card strong { color: var(--fc-ink); }
+
+/* A neutral section-id chip, e.g. <span class="fc-badge">C1</span> next
+   to a heading -- the DEC-8 outcome badges above all need a -refer/
+   -routine/etc suffix to get a background; this is the bare default. */
+.fc-badge {
+  background: var(--fc-surface-3);
+  color: var(--fc-ink-faint);
+  border: 1px solid var(--fc-line);
+}
+
+.fc-caption {
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;
+  color: var(--fc-ink-faint);
+  margin: 6px 0 10px !important;
+  line-height: 1.5;
+}
+.fc-unavailable {
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;
+  color: var(--fc-ink-faint);
+  font-style: italic;
+}
+
+.fc-stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 4px 0 14px;
+}
+.fc-stats-row .fc-stat-tile {
+  flex: 1 1 140px;
+}
+.fc-stat-val {
+  font-family: "Fraunces", serif !important;
+  font-weight: 560;
+  font-size: 1.4rem;
+  color: var(--fc-ink);
+  display: block;
+}
+.fc-stat-label {
+  font-family: "Inter", sans-serif !important;
+  font-size: 12px;
+  color: var(--fc-ink-muted);
+  display: block;
+  margin-top: 4px;
+}
+.fc-verdict-pass { color: var(--fc-teal) !important; }
+.fc-verdict-fail { color: var(--fc-amber) !important; }
+
+.fc-charts-row, .fc-chart-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+  margin: 8px 0;
+}
+.fc-chart-col { flex: 1 1 220px; min-width: 0; }
+.fc-chart-row svg, .fc-chart-col svg { max-width: 100%; height: auto; }
+
+.fc-card-inline {
+  background: var(--fc-surface-3);
+  border: 1px solid var(--fc-line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 10px 0;
+}
+.fc-card-inline h4 { margin-top: 0; }
+
+.fc-gate-toggle { margin-top: 10px; }
+
+.fc-collapsible details, .fc-limitations {
+  border: none;
+}
+.fc-collapsible summary, .fc-limitations summary {
+  cursor: pointer;
+  font-family: "Fraunces", ui-serif, Georgia, serif !important;
+  font-weight: 560;
+  font-size: 1.1rem;
+  color: var(--fc-ink);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+.fc-collapsible summary::-webkit-details-marker,
+.fc-limitations summary::-webkit-details-marker { display: none; }
+.fc-collapsible summary::before {
+  content: "\25b8";
+  color: var(--fc-ink-muted);
+  transition: transform 160ms;
+}
+.fc-collapsible details[open] summary::before { transform: rotate(90deg); }
+.fc-limitations {
+  background: var(--fc-surface-2);
+  border: 1px solid var(--fc-line);
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+.fc-limitations summary::before { content: "\25b8"; color: var(--fc-ink-muted); }
+.fc-limitations[open] summary::before { transform: rotate(90deg); display: inline-block; }
+
+.fc-pullquote {
+  border-left: 3px solid var(--fc-lavender);
+  padding: 4px 0 4px 16px;
+  margin: 14px 0;
+}
+.fc-pullquote blockquote {
+  margin: 0;
+  font-family: "Fraunces", ui-serif, Georgia, serif !important;
+  font-style: italic;
+  font-size: 1rem;
+  color: var(--fc-ink);
+  line-height: 1.5;
+}
+
+.fc-bar-pair { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.fc-bar-before, .fc-bar-after {
+  background: var(--fc-line);
+  border-radius: 4px;
+  height: 22px;
+  overflow: hidden;
+}
+.fc-bar-fill {
+  display: block;
+  height: 100%;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 11px !important;
+  color: #0C0C0B;
+  padding: 0 8px;
+  line-height: 22px;
+  white-space: nowrap;
+  border-radius: 4px 0 0 4px;
+}
+
+/* Tables (confusion matrix, scorecard, limitations) */
+.fc-cm-table, .fc-scard-table, .fc-limit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;
+  margin: 10px 0;
+}
+.fc-cm-table th, .fc-scard-table th, .fc-limit-table th {
+  text-align: left;
+  color: var(--fc-ink-muted);
+  font-weight: 500;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--fc-line-strong);
+}
+.fc-cm-table td, .fc-scard-table td, .fc-limit-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--fc-line);
+  color: var(--fc-ink);
+}
+.fc-cm-table tr:last-child td, .fc-scard-table tr:last-child td,
+.fc-limit-table tr:last-child td { border-bottom: none; }
+
+.fc-chip-hold, .fc-chip-missed, .fc-chip-overturned {
+  display: inline-block;
+  font-size: 11px !important;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.fc-chip-hold { background: var(--fc-teal-soft); color: var(--fc-teal); }
+.fc-chip-missed { background: var(--fc-amber-soft); color: var(--fc-amber); }
+.fc-chip-overturned { background: var(--fc-lavender-soft); color: var(--fc-lavender); }
+
+/* ---- About section (C9) ---- */
+.fc-about-section .fc-author-card {
+  background: var(--fc-surface-3);
+  border: 1px solid var(--fc-line);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 8px;
+}
+.fc-about-section .fc-author-info p:first-child {
+  font-family: "Fraunces", serif !important;
+  font-size: 1.05rem;
+  color: var(--fc-ink);
+  margin-bottom: 4px;
+}
+.fc-future-list {
+  margin: 4px 0 0;
+  padding-left: 20px;
+}
+.fc-future-list li {
+  font-family: "Inter", sans-serif !important;
+  font-size: 14px;
+  color: var(--fc-ink-muted);
+  line-height: 1.7;
+}
+.fc-about-section .fc-disclaimer {
+  margin-top: 16px;
+  background: var(--fc-surface-3) !important;
+  border: 1px solid var(--fc-lavender);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.fc-about-section .fc-disclaimer p { margin: 0; color: var(--fc-ink) !important; }
+
+/* ====================================================================
+   Eye-mode toggle (item 1): prominent segmented buttons instead of a
+   plain radio list, and actual show/hide of the two panels (wired in
+   app.py via gr.Column(visible=...) + eye_mode.change()).
+   ==================================================================== */
+#fc-eye-mode {
+  margin-bottom: 12px;
+}
+#fc-eye-mode .wrap {
+  display: flex;
+  gap: 0;
+  background: var(--fc-surface-3) !important;
+  border: 1px solid var(--fc-line) !important;
+  border-radius: 10px;
+  padding: 4px;
+  max-width: 360px;
+}
+#fc-eye-mode label {
+  flex: 1 1 50%;
+  justify-content: center;
+  border-radius: 7px !important;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 13px !important;
+  padding: 10px 12px !important;
+  color: var(--fc-ink-muted) !important;
+  background: transparent !important;
+  border: none !important;
+  transition: background 140ms, color 140ms;
+}
+#fc-eye-mode label.selected,
+#fc-eye-mode input:checked + span {
+  color: var(--fc-bg) !important;
+}
+#fc-eye-mode label:has(input:checked) {
+  background: var(--fc-teal) !important;
+  color: var(--fc-bg) !important;
+}
+
+/* ---- Session log (item 3): own top-level section, not a drawer ---- */
+#fc-log { padding: var(--fc-sp-32) 0; }
+.fc-section-title {
+  font-family: "Fraunces", ui-serif, Georgia, serif !important;
+  font-weight: 560;
+  font-size: 1.5rem;
+  color: var(--fc-ink);
+  margin: 0 0 10px;
+}
+
+/* ---- Model comparison (item 5) ---- */
+#fc-models { padding: var(--fc-sp-32) 0; background: var(--fc-surface-1); }
+.fc-model-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;
+  margin: 10px 0;
+}
+.fc-model-table th, .fc-model-table td {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--fc-line);
+}
+.fc-model-table th {
+  color: var(--fc-ink-muted);
+  font-weight: 500;
+  border-bottom: 1px solid var(--fc-line-strong);
+}
+.fc-model-table td { color: var(--fc-ink); }
+.fc-model-table tr.fc-model-deployed { background: var(--fc-surface-3); }
+.fc-model-table tr.fc-model-deployed td:first-child::after {
+  content: " \25c6 deployed";
+  color: var(--fc-teal);
+  font-size: 10px;
+}

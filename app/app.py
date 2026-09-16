@@ -80,6 +80,7 @@ from app.core.model import (  # noqa: E402
 )
 from app.core.inference import to_model_input, pooled_embedding  # noqa: E402
 from app.core.gradcam import compute_gradcam_overlay_with_timeout  # noqa: E402
+from app.render import evidence  # noqa: E402
 
 METRICS = M.load_metrics()
 
@@ -189,9 +190,12 @@ U1_NAV_HIDE = """
 NAV_HTML = """
 <nav class="fc-nav" id="fc-nav">
   <a href="#fc-try" class="fc-nav-link" data-target="fc-try">Console</a>
-  <a href="#fc-integrity" class="fc-nav-link" data-target="fc-integrity">Instrument</a>
+  <a href="#fc-log" class="fc-nav-link" data-target="fc-log">Session Log</a>
+  <a href="#fc-results" class="fc-nav-link" data-target="fc-results">Results</a>
+  <a href="#fc-integrity" class="fc-nav-link" data-target="fc-integrity">Integrity</a>
   <a href="#fc-evidence" class="fc-nav-link" data-target="fc-evidence">Evidence</a>
-  <a href="#fc-quantum" class="fc-nav-link" data-target="fc-quantum">Quantum Lab</a>
+  <a href="#fc-models" class="fc-nav-link" data-target="fc-models">Models</a>
+  <a href="#fc-built" class="fc-nav-link" data-target="fc-built">Built</a>
   <a href="#fc-about" class="fc-nav-link" data-target="fc-about">About</a>
 </nav>
 """
@@ -812,6 +816,24 @@ def build_single_result_html(probs, outcome, grade, expected_grade, conf,
     )
 
 
+def _numpy_image_to_data_url(arr):
+    """processed_rgb and the Grad-CAM overlay are both raw uint8 RGB numpy
+    arrays (from to_model_input()/compute_gradcam_overlay()), not file
+    paths or URLs -- encode as a PNG data: URL so <img src=...> actually
+    has something to load."""
+    import base64
+    import io
+
+    from PIL import Image as PILImage
+
+    if arr.dtype != np.uint8:
+        arr = np.clip(arr, 0, 255).astype(np.uint8)
+    buf = io.BytesIO()
+    PILImage.fromarray(arr).save(buf, format="PNG")
+    encoded = base64.b64encode(buf.getvalue()).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
+
+
 def build_image_slider_html(processed_img, gradcam_img, gradcam_skipped):
     """Build the before/after image comparison section.
 
@@ -821,11 +843,12 @@ def build_image_slider_html(processed_img, gradcam_img, gradcam_skipped):
     if processed_img is None:
         return '<div class="fc-card fc-empty">No image processed.</div>'
 
-    # Build image HTML with Gradio data URL
-    img_tag = f'<img src="{processed_img}" class="fc-img-main" alt="Preprocessed">'
+    img_tag = (f'<img src="{_numpy_image_to_data_url(processed_img)}" '
+               f'class="fc-img-main" alt="Preprocessed">')
 
     if gradcam_img is not None:
-        gc_tag = f'<img src="{gradcam_img}" class="fc-img-gradcam" alt="Grad-CAM">'
+        gc_tag = (f'<img src="{_numpy_image_to_data_url(gradcam_img)}" '
+                  f'class="fc-img-gradcam" alt="Grad-CAM">')
         caption = "Preprocessed input (left) vs. Grad-CAM heatmap (right)"
     elif gradcam_skipped:
         gc_tag = '<div class="fc-img-placeholder">Grad-CAM not available</div>'
@@ -936,11 +959,13 @@ def build_both_eyes_image_html(procL, procR):
 
     img_tags = ''
     if procL is not None:
-        img_tags += f'<img src="{procL}" class="fc-img-main" alt="Left eye (preprocessed)">'
+        img_tags += (f'<img src="{_numpy_image_to_data_url(procL)}" '
+                     f'class="fc-img-main" alt="Left eye (preprocessed)">')
     else:
         img_tags += '<div class="fc-img-placeholder">Left eye not available</div>'
     if procR is not None:
-        img_tags += f'<img src="{procR}" class="fc-img-main" alt="Right eye (preprocessed)">'
+        img_tags += (f'<img src="{_numpy_image_to_data_url(procR)}" '
+                     f'class="fc-img-main" alt="Right eye (preprocessed)">')
     else:
         img_tags += '<div class="fc-img-placeholder">Right eye not available</div>'
 
@@ -1344,7 +1369,10 @@ def build_demo():
         # =================================================================
         with gr.Column(elem_id="fc-try"):
             # U1: Single eye / Both Eyes segmented toggle inside the console
-            # section instead of separate tabs.
+            # section instead of separate tabs. The radio's .change() below
+            # actually shows/hides the two panels -- previously this control
+            # existed but nothing was wired to it, so both panels were
+            # always visible at once, stacked on top of each other.
             eye_mode = gr.Radio(
                 ["Single Eye", "Both Eyes"],
                 value="Single Eye",
@@ -1353,7 +1381,7 @@ def build_demo():
             )
 
             # -- Single Eye panel --
-            with gr.Column(elem_id="fc-single-eye-panel"):
+            with gr.Column(elem_id="fc-single-eye-panel", visible=True) as single_eye_panel:
                 # B4: curated samples for Single Eye; if absent, show upload prompt.
                 single_slots_raw = (
                     {k: v for k, v in CURATED_SAMPLES.items() if k != "pair"}
@@ -1407,7 +1435,7 @@ def build_demo():
                     )
 
             # -- Both Eyes panel --
-            with gr.Column(elem_id="fc-both-eyes-panel"):
+            with gr.Column(elem_id="fc-both-eyes-panel", visible=False) as both_eyes_panel:
                 if pair_slot:
                     gr.Markdown(
                         f"**No retinal images available?** Load the paired sample below "
@@ -1447,42 +1475,69 @@ def build_demo():
                     )
 
             # -- Session Log (inline, collapsible drawer) --
-            with gr.Accordion("Session Log", open=False, elem_id="fc-history-drawer"):
-                gr.Markdown(
-                    "Every grade from **Single Eye** or **Both Eyes** in this browser "
-                    "session shows up here, newest first. Nothing is saved to disk or "
-                    "shared across users \u2014 reloading the page clears it. Export it "
-                    "as a PDF to keep a copy (e.g. for a viva or a lab notebook)."
-                )
-                out_log_html = gr.HTML(render_log_html([]))
-                btn_pdf = gr.Button("Export session log as PDF")
-                out_pdf_file = gr.File(label="Session log PDF", interactive=False)
-                out_pdf_status = gr.Markdown()
-                btn_pdf.click(
-                    build_pdf_export,
-                    inputs=[session_state],
-                    outputs=[out_pdf_file, out_pdf_status],
-                )
+        # =================================================================
+        # SECTION: Session Log -- elem_id="fc-log" (item 3: promoted out of
+        # the Console section's accordion drawer into its own top-level,
+        # nav-linked section, separate from the grading console).
+        # =================================================================
+        with gr.Column(elem_id="fc-log"):
+            gr.HTML('<h3 class="fc-section-title">Session Log</h3>')
+            gr.Markdown(
+                "Every grade from **Single Eye** or **Both Eyes** in this browser "
+                "session shows up here, newest first. Nothing is saved to disk or "
+                "shared across users \u2014 reloading the page clears it. Export it "
+                "as a PDF to keep a copy (e.g. for a viva or a lab notebook)."
+            )
+            out_log_html = gr.HTML(render_log_html([]))
+            btn_pdf = gr.Button("Export session log as PDF")
+            out_pdf_file = gr.File(label="Session log PDF", interactive=False)
+            out_pdf_status = gr.Markdown()
+            btn_pdf.click(
+                build_pdf_export,
+                inputs=[session_state],
+                outputs=[out_pdf_file, out_pdf_status],
+            )
 
         # =================================================================
-        # SECTION: Instrument Card -- elem_id="fc-integrity"
+        # SECTION: Clinical Results -- elem_id="fc-results"
+        # =================================================================
+        with gr.Column(elem_id="fc-results"):
+            gr.HTML(evidence.build_c1_clinical_results_html())
+            gr.HTML(evidence.build_c2_calibration_html())
+            gr.HTML(evidence.build_c3_literature_html())
+
+        # =================================================================
+        # SECTION: Evaluation Integrity -- elem_id="fc-integrity"
         # =================================================================
         with gr.Column(elem_id="fc-integrity"):
-            gr.HTML(build_instrument_card_html())
+            gr.HTML(evidence.build_c4_integrity_html())
 
         # =================================================================
-        # SECTION: Quantum Lab -- elem_id="fc-quantum"
+        # SECTION: Evidence -- elem_id="fc-evidence"
         # =================================================================
-        with gr.Column(elem_id="fc-quantum"):
-            gr.HTML(build_quantum_lab_html())
+        with gr.Column(elem_id="fc-evidence"):
+            gr.HTML(evidence.build_c5_evidence_html())
+            gr.HTML(evidence.build_c6_prediction_record_html())
+
+        # =================================================================
+        # SECTION: Trained Model Comparison -- elem_id="fc-models" (item 5)
+        # =================================================================
+        with gr.Column(elem_id="fc-models"):
+            gr.HTML(evidence.build_models_comparison_html())
+
+        # =================================================================
+        # SECTION: How It's Built + Limitations -- elem_id="fc-built"
+        # =================================================================
+        with gr.Column(elem_id="fc-built"):
+            gr.HTML(evidence.build_c7_built_html())
+            gr.HTML(evidence.build_c8_limitations_html())
 
         # =================================================================
         # SECTION: About -- elem_id="fc-about"
         # =================================================================
         with gr.Column(elem_id="fc-about"):
-            gr.Markdown(
-                build_model_info_md(METRICS)
-            )
+            gr.HTML(evidence.build_c9_about_html())
+            gr.Markdown(build_model_info_md(METRICS))
             gr.Markdown(
                 "----\n" + build_disclaimer_md(),
                 elem_classes=["***"],
@@ -1519,9 +1574,20 @@ def build_demo():
             ],
         )
 
-        # U1: toggle Single Eye / Both Eyes visibility via JS
-        # (the gradio-native .change() on gr.Radio has a known issue with
-        # gr.Column visibility; inline JS is more reliable here).
+        # U1/item-1: toggle Single Eye / Both Eyes panel visibility. This
+        # was previously left unwired (a comment here claimed gr.Radio's
+        # .change() "has a known issue with gr.Column visibility" and
+        # deferred to JS that was never written -- both panels were
+        # therefore always visible at once, stacked vertically). The
+        # standard gr.update(visible=...) pattern works fine.
+        def _toggle_eye_mode(mode):
+            is_single = mode == "Single Eye"
+            return gr.update(visible=is_single), gr.update(visible=not is_single)
+
+        eye_mode.change(
+            _toggle_eye_mode, inputs=[eye_mode],
+            outputs=[single_eye_panel, both_eyes_panel],
+        )
 
     return demo, fundus_theme
 
