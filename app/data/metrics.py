@@ -28,6 +28,8 @@ CLAIM3_DECOMPOSED_384_JSON = RESULTS_DIR / "claim3_decomposed_tf_efficientnet_b0
 QML_JSON = RESULTS_DIR / "qml_pqc.json"
 QCNN_JSON = RESULTS_DIR / "qcnn_no_cnn_pixels.json"
 ACCEPTANCE_12_1_JSON = RESULTS_DIR / "acceptance_12_1.json"
+INTER_EYE_JSON = RESULTS_DIR / "inter_eye_correlation.json"
+
 
 
 def _load_json(path: Path) -> Optional[dict]:
@@ -131,6 +133,44 @@ def _load_grade1() -> Grade1:
 
 
 @dataclass(frozen=True)
+class Hero:
+    """St stat tile data for the hero section (U3)."""
+    lookup_qwk: Optional[float] = None  # label-only baseline from inter_eye_correlation.json
+    referral_sens_in_10: Optional[int] = None  # e.g. 9
+    referral_spec_in_10: Optional[int] = None  # e.g. 7
+    n_models: Optional[int] = None  # count of finetune_*.json + frozen-feature configs
+
+
+def _load_hero() -> Hero:
+    # 1. lookup_qwk from inter_eye_correlation.json
+    ie = _load_json(INTER_EYE_JSON)
+    lookup_qwk = None
+    if ie and "label_only_baseline" in ie:
+        lookup_qwk = ie["label_only_baseline"].get("lookup_qwk")
+
+    # 2. referral sens/spec → in-10 numbers
+    cal = _load_json(CALIBRATION_JSON)
+    full_cov = (cal or {}).get("referral_threshold", {}).get("test_full_coverage", {})
+    sens = full_cov.get("sensitivity")
+    spec = full_cov.get("specificity")
+    sens_in_10 = round(sens * 10) if sens is not None else None
+    spec_in_10 = round(spec * 10) if spec is not None else None
+
+    # 3. n_models: count finetune_*.json plus frozen-feature configs
+    import glob
+    finetune_files = glob.glob(str(RESULTS_DIR / "finetune_*.json"))
+    frozen_files = glob.glob(str(RESULTS_DIR / "*frozen*.json"))
+    n_models = len(finetune_files) + len(frozen_files) if finetune_files else None
+
+    return Hero(
+        lookup_qwk=lookup_qwk,
+        referral_sens_in_10=sens_in_10,
+        referral_spec_in_10=spec_in_10,
+        n_models=n_models,
+    )
+
+
+@dataclass(frozen=True)
 class BothEyesDecomposition:
     """From results/claim3_decomposed_tf_efficientnet_b0_384.json."""
     head_effect: Optional[float] = None
@@ -159,6 +199,7 @@ class Metrics:
     calibration: Calibration
     grade1: Grade1
     both_eyes: BothEyesDecomposition
+    hero: Hero
     qml: Optional[dict]
     qcnn: Optional[dict]
     acceptance_12_1: Optional[dict]
@@ -182,6 +223,7 @@ def load_metrics() -> Metrics:
         calibration=_load_calibration(),
         grade1=_load_grade1(),
         both_eyes=_load_both_eyes(),
+        hero=_load_hero(),
         qml=_load_json(QML_JSON),
         qcnn=_load_json(QCNN_JSON),
         acceptance_12_1=_load_json(ACCEPTANCE_12_1_JSON),

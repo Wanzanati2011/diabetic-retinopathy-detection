@@ -141,6 +141,57 @@ html, body {
 }
 *** p, *** strong { color: var(--fc-ink) !important; }
 
+/* ---- Hero section (U3) ---- */
+.fc-hero {
+  padding: var(--fc-sp-32) 0;
+}
+.fc-hero-headline {
+  font-family: "Fraunces", ui-serif, Georgia, serif !important;
+  font-weight: 500;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  line-height: 1.15;
+  margin: 8px 0 4px;
+  color: var(--fc-ink);
+}
+.fc-stat-tile {
+  flex: 1 1 200px;
+  background: var(--fc-surface-3);
+  border: 1px solid var(--fc-line);
+  border-radius: 10px;
+  padding: 16px;
+  min-width: 160px;
+}
+.fc-stat-value {
+  font-family: "Fraunces", serif !important;
+  font-weight: 560;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  color: var(--fc-ink);
+  display: block;
+}
+.fc-stat-label {
+  font-family: "Inter", sans-serif !important;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--fc-ink-muted);
+  display: block;
+  margin-top: 4px;
+}
+.fc-disclaimer-chip {
+  display: inline-flex;
+  align-items: center;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;
+  font-weight: 400;
+  color: var(--fc-ink-muted);
+  background: var(--fc-surface-3);
+  border: 1px solid var(--fc-line);
+  border-radius: var(--fc-radius-chip);
+  padding: 6px 14px;
+  margin-top: 16px;
+}
+
 /* ---- Cards ---- */
 .fc-card {
   background: var(--fc-surface-2);

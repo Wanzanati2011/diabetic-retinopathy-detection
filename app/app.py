@@ -429,6 +429,56 @@ GRADE1_RECALL = context.load_grade1_recall()
 CURATED_SAMPLES = samples.load_samples()
 
 
+# U3: hero section with three stat tiles read from METRICS.
+def build_hero_html():
+    """U3: Hero with headline, three stat tiles from METRICS, and a
+    disclaimer chip. Each tile value comes from the METRICS object --
+    never a typed number (R3)."""
+    h = METRICS.hero
+    if h.lookup_qwk is not None:
+        qwk_str = f"{h.lookup_qwk:.3f}"
+    else:
+        qwk_str = "unavailable"
+
+    if h.referral_sens_in_10 is not None and h.referral_spec_in_10 is not None:
+        sens_text = f"{h.referral_sens_in_10} in 10"
+        spec_text = f"{h.referral_spec_in_10} in 10"
+    else:
+        sens_text = spec_text = "data unavailable"
+
+    if h.n_models is not None:
+        models_text = f"{h.n_models} models"
+    else:
+        models_text = "data unavailable"
+
+    tiles_html = (
+        '<div style="display:flex;gap:16px;margin:20px 0;flex-wrap:wrap;">'
+        f'<div class="fc-stat-tile"><span class="fc-stat-value">{qwk_str}</span>'
+        f'<span class="fc-stat-label">QWK of a model that sees *no pixels*, '
+        f'only the other eye\'s label</span></div>'
+        f'<div class="fc-stat-tile"><span class="fc-stat-value">'
+        f'{sens_text} / {spec_text}</span>'
+        f'<span class="fc-stat-label">referable patients caught · healthy ones cleared</span></div>'
+        f'<div class="fc-stat-tile"><span class="fc-stat-value">{models_text}</span>'
+        f'<span class="fc-stat-label">models trained · 1 laptop GPU</span></div>'
+        '</div>'
+    )
+
+    disclaimer_chip = (
+        '<div class="fc-disclaimer-chip">● Research prototype · not a medical device</div>'
+    )
+
+    return (
+        '<div class="fc-hero">'
+        '<span class="fc-kicker">Diabetic Retinopathy Screening &middot; Research Prototype</span>'
+        f'<h2 class="fc-hero-headline">An AI that grades retinal photos for diabetic eye '
+        'disease, and a study of how to evaluate one honestly.</h2>'
+        f'{tiles_html}'
+        f'{disclaimer_chip}'
+        '</div>'
+    )
+
+
 def _check_optional_dep(module_name):
     import importlib.util
     return importlib.util.find_spec(module_name) is not None
@@ -957,6 +1007,9 @@ def build_demo():
         # the page head -- done as a hidden component so it renders inside
         # the Blocks scope and applies to this page only.
         gr.HTML(f'<style>{U1_NAV_HIDE}</style>')
+
+        # U3: hero section with headline, stat tiles, and disclaimer chip.
+        gr.HTML(build_hero_html())
 
         # Shared across every section -- a plain Python list living in THIS
         # browser session only (Gradio's gr.State), not written to disk or
