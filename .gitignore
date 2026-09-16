@@ -30,3 +30,13 @@ Thumbs.db
 
 # local Claude Code project config
 .claude/
+
+# Office lock files
+~$*
+
+# Claude Code session output dumps -- not part of the project
+Claude outputs/
+
+# curated demo samples (B4) -- local-only until the Kaggle licence is
+# confirmed (R6/H1); never committed
+app/samples_local/
