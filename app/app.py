@@ -531,6 +531,11 @@ print(f"Calibration active: {CALIBRATION_ACTIVE}"
 MASTHEAD_HTML = MASTHEAD_HTML.replace(
     "{{CALIBRATION_STATUS}}", "calibrated" if CALIBRATION_ACTIVE else "uncalibrated fallback")
 
+# A4: per-prediction context, loaded once at startup. None -> that section
+# renders "data unavailable" rather than crashing (B2's rule, applied early).
+PER_GRADE_CONTEXT = context.load_per_grade_context()
+GRADE1_RECALL = context.load_grade1_recall()
+
 
 def to_model_input(pil_image, image_size=None):
     """Reproduces the EXACT eval-time (augment=False) preprocessing path used
@@ -680,7 +685,28 @@ def render_cards_from_logits(logits, is_ungradable=False, ungradable_reason=None
         )
 
     prob_dict = {f"{g} — {GRADE_NAMES[g]}": float(probs[g]) for g in range(5)}
-    return verdict_html, referral_html, conf_html, prob_dict, outcome, probs, raw
+    context_html = render_context_card(grade) if outcome is not D.Outcome.UNGRADABLE else ""
+    return verdict_html, referral_html + context_html, conf_html, prob_dict, outcome, probs, raw
+
+
+def render_context_card(grade):
+    """A4: 'When this model says Grade {g}, it was right {x}% of the time
+    and within one grade {y}% (n = {n}).' Plus the grade-1 blind-spot line
+    for predicted grade 0 or 1. Reads PER_GRADE_CONTEXT/GRADE1_RECALL,
+    loaded once at startup from the test CSV -- never a typed number."""
+    if PER_GRADE_CONTEXT is None or PER_GRADE_CONTEXT.get(grade) is None:
+        return ('<div class="fc-outcome-note" style="margin-top:10px;">'
+                'Per-prediction context: data unavailable.</div>')
+    c = PER_GRADE_CONTEXT[grade]
+    line = (f'<div class="fc-outcome-note" style="margin-top:10px;">'
+            f'When this model says Grade {grade} on the held-out test set, it was right '
+            f'{c.pct_exact:.0%} of the time and within one grade {c.pct_within1:.0%} '
+            f'(n = {c.n}).</div>')
+    if grade in (0, 1) and GRADE1_RECALL is not None:
+        line += (f'<div class="fc-outcome-note" style="margin-top:4px;">Mild disease is this '
+                 f'model\'s known blind spot: only {GRADE1_RECALL:.0%} of truly mild cases '
+                 f'are recognised.</div>')
+    return line
 
 
 def pooled_embedding(x):
