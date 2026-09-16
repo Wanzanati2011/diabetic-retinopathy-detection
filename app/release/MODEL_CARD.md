@@ -58,6 +58,55 @@ most grade-1 errors landing at grade 0). Anyone using this checkpoint for
 grade-1-sensitive screening should treat this as an open, real caveat, not
 a footnote.
 
+## What a predicted grade has historically meant (P2 test set)
+
+Generated from `results/finetune_app_converged_p2_class_balanced_seed42_test_predictions.csv`
+by `app/data/context.py:per_grade_context()` -- these numbers are not
+hand-typed, and that same function's output is what the app itself reads
+at runtime for its per-prediction context card (Task A4).
+
+| Predicted grade | n | Exactly right | Within &plusmn;1 | Truly referable | Most common true grade when wrong |
+|---|---|---|---|---|---|
+| 0 -- No DR | 4,384 | 86.1% | 93.2% | 6.8% | 1 (Mild NPDR) |
+| 1 -- Mild NPDR | 331 | 21.8% | 98.2% | 24.8% | 0 (No DR) |
+| 2 -- Moderate NPDR | 902 | 59.8% | 76.8% | 75.1% | 0 (No DR) |
+| 3 -- Severe NPDR | 93 | 48.4% | 95.7% | 95.7% | 2 (Moderate NPDR) |
+| 4 -- Proliferative DR | 104 | 75.0% | 82.7% | 96.2% | 2 (Moderate NPDR) |
+
+Read this as: when the app says "Grade 1," it is very rarely exactly right
+(21.8%) but almost always close (98.2% within one grade), and about a
+quarter of the time the true case was actually referable -- consistent
+with grade-1 recall being this model's known weak point (see below).
+
+## Grade-1 (Mild NPDR) decision-rule investigation
+
+`results/grade1_diagnosis.json` tested four ways of reading this model's
+existing probabilities (no retraining) against a **pre-registered
+threshold**: no decision rule may be called a fix unless it recovers
+grade-1 recall to >=0.30. Result (`verdict: H2_representation_ceiling`):
+**no rule clears the bar.** The best of the four (`expected_grade_rounded`
+-- reading the probabilities ordinally, i.e. this app's own "expected
+grade" marker rounded to the nearest integer) reaches only **0.228**
+grade-1 recall, still short of 0.30. This supports a measurement-ceiling
+explanation over a fixable-decision-rule one: the evidence for Mild NPDR
+(microaneurysms ~10px across) does not survive this project's 384px
+representation at any operating point, corroborated by three independent
+observations elsewhere in this project (grade-1's partner-eye transfer
+rate of 45.8% vs. 72-94% for every other grade; three of the eight
+corrupted, near-black excluded frames carrying a human grade of 1; recall
+stuck at 8.7-14.0% across all eight converged training runs).
+
+One free, sub-finding *is* real, though smaller than a fix: reading the
+same probabilities ordinally (`expected_grade_rounded` vs. plain argmax,
+identical model, no retraining) lifts overall test QWK by **+0.0119**
+(95% patient-level bootstrap CI [0.0055, 0.0185], excludes zero) --
+`results/grade1_diagnosis.json -> ordinal_read_vs_argmax`. **This number
+was computed on raw (pre-temperature) probabilities**, not the calibrated
+ones the app's confidence display uses, so it should not be read as a
+property of the app's calibrated "expected grade" dial (A5) -- it is
+independent corroboration of this project's separate ordinal-head finding,
+not a validated property of anything currently rendered in the UI.
+
 ## Honest limitations -- read before using this for anything
 
 1. **Now inside the "correct, proceed" band -- with a real tradeoff.**
@@ -72,12 +121,29 @@ a footnote.
    free: grade-1 recall dropped substantially (see the note above). The
    training script's own printed verdict for this run was:
    `ACCEPTANCE TEST 10.1 VERDICT: test_qwk=0.7160 -> correct -- proceed`.
-2. **Confidence is not calibrated.** The app shows the model's raw softmax
-   max-probability. MASTER_PLAN.md Part 7 (temperature scaling on the
-   validation set, plus a reject threshold picked by a pre-stated rule) has
-   not been run for this checkpoint. There is no "UNCERTAIN -- refer" gate in
-   the current app; do not read the shown confidence number as a calibrated
-   probability.
+2. **Confidence is temperature-scaled, with a human-routing uncertainty
+   gate -- not a raw softmax number.** MASTER_PLAN.md Part 7
+   (`src/experiments/calibrate.py`) fitted a single temperature T=3.3674 on
+   the P2 validation fold only (never on test), lifting test-set Expected
+   Calibration Error from 0.1628 to 0.0285. A referral threshold
+   (`referral_score = P(grade>=2) >= 0.13486`, fixed on validation for
+   >=90% sensitivity) and an uncertainty threshold
+   (`max calibrated probability < 0.59274` -> `UNCERTAIN`) are both applied
+   at inference (`app/core/decision.py`). An `UNCERTAIN` case is never
+   silently kept or discarded -- it is routed to a human grader
+   (`thresholds.json`'s `reject_action`). At the shipped 80%-coverage
+   operating point, rejecting the least-confident ~20% of test images lifts
+   selective QWK from 0.716 to 0.774 (Acceptance Test 11.1: **pass**). One
+   caveat carried over from the fitting process itself: the pre-registered
+   sensitivity-based rule for picking tau turned out degenerate for this
+   model (see `reject_option.rule_degeneracy` in
+   `results/calibration_reject.json`) -- the shipped tau instead comes from
+   the other quantity Part 11 pre-specified, the ~80% coverage point, which
+   is a switch between two pre-registered quantities, not a post-hoc
+   search. If the checkpoint hash or `thresholds.json`'s own acceptance
+   verdict don't check out at app startup, the app falls back to raw
+   uncalibrated confidence and a plain amber banner says so -- it never
+   fakes a calibrated number it hasn't actually verified.
 3. **Grad-CAM implemented (Phase 2), not independently verified.** Shows
    attention from the backbone's last conv block for the predicted class,
    alongside the preprocessed photo. Requires `pip install grad-cam` and

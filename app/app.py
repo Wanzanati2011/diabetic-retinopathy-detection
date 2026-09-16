@@ -9,19 +9,24 @@ frozen weights and runs inference.
 WHAT THIS APP IS, HONESTLY:
   - Model: tf_efficientnet_b0 @ 384px, fine-tuned end-to-end on the P2
     (patient-level, honest) split. See app/release/MODEL_CARD.md for the
-    real numbers (test QWK 0.6128, referable-DR AUROC 0.8715) and an
-    important caveat: by MASTER_PLAN.md Part 10's own acceptance bands,
-    this run (15 epochs, ~19 min) falls in the 0.40-0.70 "undertrained or
-    preprocessing bug" band, not the 0.75-0.85 "correct" band. It is a
-    real, working research-prototype model -- just not yet the best this
-    project's own pipeline (see finetune_converged.py's 40-epoch recipe)
-    could produce. Report this plainly in any demo/viva, don't oversell it.
-  - Confidence shown is the model's RAW softmax max-probability. Phase 7
-    (temperature scaling + a validation-set-fitted reject threshold) has
-    NOT been run yet, so there is no calibrated confidence and no
-    UNCERTAIN/reject-option gating in this version -- MASTER_PLAN.md Part
-    12.2's example app has that gate; this one deliberately does not fake
-    it with an unfitted threshold. Labelled as "uncalibrated" in the UI.
+    real numbers (test QWK 0.716, referable-DR AUROC 0.912) -- this is the
+    converged retrain (src/train/finetune_converged.py, 40 epochs,
+    early-stop patience 8), which lands in MASTER_PLAN.md Part 10's
+    0.70-0.85 "correct, proceed" band, up from an earlier 15-epoch
+    checkpoint that scored 0.613 ("undertrained"). The retrain also
+    dropped grade-1 (Mild NPDR) recall (0.461 -> 0.161) -- a real,
+    unexplained tradeoff, flagged in MODEL_CARD.md, not smoothed over.
+  - Confidence shown is TEMPERATURE-SCALED (Phase 7,
+    src/experiments/calibrate.py; T fitted on the validation fold only,
+    app/release/thresholds.json), with a validation-fitted UNCERTAIN gate
+    (max calibrated probability < reject_tau -- routes to a human grader,
+    never discarded) and a referral rule fixed for >=90% sensitivity on
+    validation. See app/core/decision.py for the exact definitions and
+    docs/verification/V2_definitions.md for how they were verified against
+    results/calibration_reject.json. If the checkpoint hash or the
+    acceptance-test verdict in thresholds.json don't check out at startup,
+    the app falls back to raw uncalibrated confidence and says so on
+    screen -- it never silently fakes a calibrated number.
   - Grad-CAM (Selvaraju et al. 2017) on the backbone's last conv block,
     for the predicted class -- shown alongside the preprocessed photo the
     model actually saw. Fails gracefully (panel goes blank, grading still
@@ -59,6 +64,10 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.data.preprocess import preprocess  # noqa: E402 -- THE SAME FUNCTION USED IN TRAINING
+from app.core import decision as D  # noqa: E402
+from app.core.session import make_log_entry as make_log_entry_v2  # noqa: E402
+from app.report.pdf import build_pdf_export as build_pdf_export_v2  # noqa: E402
+from app.data import context  # noqa: E402
 
 GRADE_NAMES = ["No DR", "Mild NPDR", "Moderate NPDR", "Severe NPDR", "Proliferative DR"]
 IMAGENET_MEAN = torch.tensor((0.485, 0.456, 0.406)).view(3, 1, 1)
@@ -141,6 +150,7 @@ FUNDUS_CSS = """
   --fc-teal: #3FC3BC; --fc-teal-soft: #17302D;
   --fc-amber: #E8A33D; --fc-amber-soft: #392A15;
   --fc-uncertain: #A99DDF; --fc-uncertain-soft: #292440;
+  --fc-ungradable: #A79D8C; --fc-ungradable-soft: #2A2823;
 }
 
 .fc-masthead {
@@ -185,6 +195,19 @@ FUNDUS_CSS = """
 }
 .fc-badge-refer { background: var(--fc-amber-soft); color: var(--fc-amber); }
 .fc-badge-routine { background: var(--fc-teal-soft); color: var(--fc-teal); }
+.fc-badge-uncertain { background: var(--fc-uncertain-soft); color: var(--fc-uncertain); }
+.fc-badge-ungradable { background: var(--fc-ungradable-soft); color: var(--fc-ungradable); }
+.fc-outcome-note {
+  font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; color: var(--fc-text-muted);
+  margin-top: 8px; line-height: 1.5;
+}
+.fc-inactive-banner {
+  border: 1px solid var(--fc-amber);
+}
+.fc-inactive-banner p {
+  color: var(--fc-amber); font-family: "IBM Plex Mono", monospace; font-size: 0.72rem;
+  margin: 0 0 10px; line-height: 1.5;
+}
 
 .fc-meter-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
 .fc-uncal { font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; color: var(--fc-uncertain); }
@@ -258,7 +281,7 @@ MASTHEAD_HTML = """
     <span>SPLIT <b>P2, patient-level</b></span>
     <span>TEST QWK <b>0.716</b></span>
     <span>REFERABLE-DR AUROC <b>0.912</b></span>
-    <span>CALIBRATION <b>uncalibrated</b></span>
+    <span>CALIBRATION <b>{{CALIBRATION_STATUS}}</b></span>
     <span>STATUS <b>research prototype</b></span>
   </div>
 </div>
@@ -496,6 +519,18 @@ def load_model():
 
 MODEL, TRAIN_IMAGE_SIZE = load_model()
 
+# A1: calibration integrity check, once at startup. If the checkpoint hash,
+# thresholds file, or acceptance-test verdict don't check out, the app
+# falls back to raw uncalibrated confidence and says so on screen -- it
+# never fakes a calibrated number it hasn't actually verified.
+CALIBRATION_ACTIVE, THRESHOLDS, _CALIBRATION_INACTIVE_REASON = D.check_integrity()
+MODEL_SHA12 = D.checkpoint_sha256()[:12] if CHECKPOINT_PATH.exists() else "unknown"
+print(f"Calibration active: {CALIBRATION_ACTIVE}"
+      f"{'' if CALIBRATION_ACTIVE else f' (reason: {_CALIBRATION_INACTIVE_REASON})'}"
+      f"  model sha12={MODEL_SHA12}")
+MASTHEAD_HTML = MASTHEAD_HTML.replace(
+    "{{CALIBRATION_STATUS}}", "calibrated" if CALIBRATION_ACTIVE else "uncalibrated fallback")
+
 
 def to_model_input(pil_image, image_size=None):
     """Reproduces the EXACT eval-time (augment=False) preprocessing path used
@@ -569,35 +604,83 @@ SCANNING_HTML = (
 )
 
 
-def render_cards_from_probs(probs):
+OUTCOME_BADGE = {
+    # (css class, icon, label) -- DEC-8: teal=routine, amber=refer,
+    # lavender=uncertain, neutral grey=ungradable. Never red/green.
+    D.Outcome.ROUTINE: ("fc-badge-routine", "●", "Routine · rescreen in 12 months"),
+    D.Outcome.REFER: ("fc-badge-refer", "▲", "Refer to an eye specialist"),
+    D.Outcome.UNCERTAIN: ("fc-badge-uncertain", "◆", "Needs a human grader"),
+    D.Outcome.UNGRADABLE: ("fc-badge-ungradable", "✕", "Image can't be graded"),
+}
+
+
+def render_cards_from_logits(logits, is_ungradable=False, ungradable_reason=None):
     """Shared by predict() (single eye) and predict_both_eyes() (joint
     grade) so the two modes can never drift into inconsistent verdict/
     referral/confidence HTML -- there is exactly one place this logic
-    lives. Returns (verdict_html, referral_html, conf_html, prob_dict)."""
+    lives. Applies app.core.decision (A1-A3): temperature scaling, the
+    referral rule, and the four-state outcome, with the uncalibrated
+    fallback when CALIBRATION_ACTIVE is False.
+
+    Returns (verdict_html, referral_html, conf_html, prob_dict, outcome,
+    calibrated_probs_or_raw, raw_probs)."""
+    raw = D.raw_probs(logits)
+    if CALIBRATION_ACTIVE:
+        probs = D.calibrated_probs(logits, THRESHOLDS)
+    else:
+        probs = raw
     grade = int(probs.argmax())
     conf = float(probs[grade])
-    is_referable = grade >= 2
+    outcome = D.classify_outcome(probs, THRESHOLDS, CALIBRATION_ACTIVE,
+                                  is_ungradable=is_ungradable)
+    ref_score = float(D.referral_score(probs)) if CALIBRATION_ACTIVE else float(probs[2:].sum())
+    exp_grade = float(D.expected_grade(probs))
 
-    verdict_html = (
-        '<div class="fc-card"><span class="fc-eyebrow">Assessment</span>'
-        f'<div class="fc-grade">Grade {grade}</div>'
-        f'<div class="fc-gradename">{GRADE_NAMES[grade]}</div></div>'
-    )
-    referral_text = "REFER — referable DR" if is_referable else "Routine annual follow-up"
-    referral_class = "fc-badge-refer" if is_referable else "fc-badge-routine"
+    badge_class, icon, label = OUTCOME_BADGE[outcome]
+    if outcome is D.Outcome.UNGRADABLE:
+        verdict_html = (
+            '<div class="fc-card"><span class="fc-eyebrow">Assessment</span>'
+            f'<div class="fc-grade">Image can&#39;t be graded</div>'
+            f'<div class="fc-gradename">{ungradable_reason or "basic image checks failed"}</div></div>'
+        )
+    else:
+        verdict_html = (
+            '<div class="fc-card"><span class="fc-eyebrow">Assessment</span>'
+            f'<div class="fc-grade">Grade {grade}</div>'
+            f'<div class="fc-gradename">{GRADE_NAMES[grade]} '
+            f'&middot; expected grade {exp_grade:.1f}</div></div>'
+        )
+
+    outcome_note = ""
+    if outcome is D.Outcome.UNCERTAIN and THRESHOLDS is not None:
+        outcome_note = (f'<div class="fc-outcome-note">Confidence {round(conf * 100)}% is below the '
+                         f'{round(THRESHOLDS.reject_tau * 100)}% uncertainty threshold. '
+                         f'{THRESHOLDS.reject_action}</div>')
     referral_html = (
-        '<div class="fc-card"><span class="fc-eyebrow">Recommendation</span>'
-        f'<span class="fc-badge {referral_class}">{referral_text}</span></div>'
+        f'<div class="fc-card"><span class="fc-eyebrow">Recommendation</span>'
+        f'<span class="fc-badge {badge_class}">{icon} {label}</span>{outcome_note}</div>'
     )
-    conf_pct = round(conf * 100)
-    conf_html = (
-        '<div class="fc-card">'
-        '<div class="fc-meter-label"><span class="fc-eyebrow" style="margin:0;">Confidence</span>'
-        f'<span class="fc-uncal">{conf_pct}% &middot; uncalibrated</span></div>'
-        f'<div class="fc-meter"><i style="width:{conf_pct}%"></i></div></div>'
-    )
+
+    if CALIBRATION_ACTIVE:
+        conf_pct = round(conf * 100)
+        conf_html = (
+            '<div class="fc-card">'
+            '<div class="fc-meter-label"><span class="fc-eyebrow" style="margin:0;">Confidence</span>'
+            f'<span class="fc-uncal">{conf_pct}% &middot; calibrated</span></div>'
+            f'<div class="fc-meter"><i style="width:{conf_pct}%"></i></div></div>'
+        )
+    else:
+        raw_conf_pct = round(conf * 100)
+        conf_html = (
+            '<div class="fc-card fc-inactive-banner">'
+            f'<p>{D.INACTIVE_BANNER}</p>'
+            '<div class="fc-meter-label"><span class="fc-eyebrow" style="margin:0;">Confidence</span>'
+            f'<span class="fc-uncal">{raw_conf_pct}% &middot; uncalibrated fallback</span></div>'
+            f'<div class="fc-meter"><i style="width:{raw_conf_pct}%"></i></div></div>'
+        )
+
     prob_dict = {f"{g} — {GRADE_NAMES[g]}": float(probs[g]) for g in range(5)}
-    return verdict_html, referral_html, conf_html, prob_dict
+    return verdict_html, referral_html, conf_html, prob_dict, outcome, probs, raw
 
 
 def pooled_embedding(x):
@@ -616,19 +699,20 @@ def pooled_embedding(x):
         return MODEL.forward_head(feats, pre_logits=True)
 
 
-def make_log_entry(mode, probs):
-    """One Session Log row. Session state lives ONLY in this browser tab's
-    Gradio session (a plain Python list passed through gr.State) -- nothing
-    here is written to disk or shared across users; the log HTML says so."""
+def make_log_entry(mode, outcome, probs, raw):
+    """One Session Log row (A7). Session state lives ONLY in this browser
+    tab's Gradio session (a plain Python list passed through gr.State) --
+    nothing here is written to disk or shared across users; the log HTML
+    says so."""
     grade = int(probs.argmax())
-    return {
-        "time": datetime.datetime.now().strftime("%H:%M:%S"),
-        "mode": mode,
-        "grade": grade,
-        "grade_name": GRADE_NAMES[grade],
-        "referral": "REFER" if grade >= 2 else "Routine",
-        "conf_pct": round(float(probs[grade]) * 100),
-    }
+    ref_score = float(D.referral_score(probs)) if CALIBRATION_ACTIVE else float(probs[2:].sum())
+    entry = make_log_entry_v2(
+        mode=mode, grade=grade, grade_name=GRADE_NAMES[grade], outcome=outcome,
+        expected_grade=float(D.expected_grade(probs)), referral_score=ref_score,
+        calibrated_conf=float(probs[grade]), raw_conf=float(raw[grade]),
+        calibration_active=CALIBRATION_ACTIVE, model_sha12=MODEL_SHA12,
+    )
+    return entry.as_dict()
 
 
 def render_log_html(session_log):
@@ -636,7 +720,7 @@ def render_log_html(session_log):
         return '<div class="fc-card fc-empty">No assessments yet this session.</div>'
     rows = "".join(
         f'<tr><td>{e["time"]}</td><td>{e["mode"]}</td><td>Grade {e["grade"]}</td>'
-        f'<td>{e["grade_name"]}</td><td>{e["referral"]}</td><td>{e["conf_pct"]}%</td></tr>'
+        f'<td>{e["grade_name"]}</td><td>{e["outcome"]}</td><td>{round(e["calibrated_conf"] * 100)}%</td></tr>'
         for e in reversed(session_log)
     )
     return (
@@ -646,63 +730,25 @@ def render_log_html(session_log):
         '<table style="width:100%;border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;'
         'font-size:0.72rem;color:var(--fc-text);margin-top:8px;">'
         '<tr style="color:var(--fc-text-muted);"><th style="text-align:left;">time</th><th>mode</th>'
-        '<th>grade</th><th>name</th><th>rec.</th><th>conf.</th></tr>'
+        '<th>grade</th><th>name</th><th>outcome</th><th>conf.</th></tr>'
         f'{rows}</table></div>'
     )
 
 
 def build_pdf_export(session_log):
-    """Returns (file_path_or_None, status_markdown). Lazy-imports fpdf2 the
-    same way compute_gradcam_overlay() lazy-imports pytorch-grad-cam --
-    missing or misbehaving, this degrades to a clear message, never a
-    crashed button."""
-    if not session_log:
-        return None, "*No assessments logged yet this session -- grade at least one image first.*"
-    try:
-        from fpdf import FPDF
-    except ImportError:
-        return None, "*PDF export needs `pip install fpdf2` (not installed in this environment).*"
-
-    try:
-        pdf = FPDF()
-        pdf.set_auto_page_break(auto=True, margin=15)
-        pdf.add_page()
-        pdf.set_font("Helvetica", "B", 16)
-        pdf.cell(0, 10, "Fundus Console -- Session Log")
-        pdf.ln(12)
-        pdf.set_font("Helvetica", "", 8)
-        pdf.multi_cell(0, 4.5,
-            "Research prototype trained on public datasets (EyePACS + APTOS). NOT a medical "
-            "device. NOT validated for clinical use. Not a substitute for examination by a "
-            "qualified ophthalmologist. Confidence values below are raw, uncalibrated softmax "
-            "outputs, not validated probabilities.")
-        pdf.ln(2)
-        pdf.cell(0, 5, f"Model: tf_efficientnet_b0 @ 384px, P2 split, seed 42. "
-                       f"Exported {datetime.datetime.now():%Y-%m-%d %H:%M:%S}.")
-        pdf.ln(10)
-
-        headers = ["Time", "Mode", "Grade", "Grade name", "Recommendation", "Confidence"]
-        widths = [22, 24, 16, 34, 40, 24]
-        pdf.set_font("Helvetica", "B", 9)
-        for h, w in zip(headers, widths):
-            pdf.cell(w, 7, h, border=1)
-        pdf.ln(7)
-        pdf.set_font("Helvetica", "", 9)
-        for e in session_log:
-            pdf.cell(widths[0], 7, e["time"], border=1)
-            pdf.cell(widths[1], 7, e["mode"], border=1)
-            pdf.cell(widths[2], 7, str(e["grade"]), border=1)
-            pdf.cell(widths[3], 7, e["grade_name"], border=1)
-            pdf.cell(widths[4], 7, e["referral"], border=1)
-            pdf.cell(widths[5], 7, f'{e["conf_pct"]}%', border=1)
-            pdf.ln(7)
-
-        out_path = Path(tempfile.gettempdir()) / f"fundus_session_log_{datetime.datetime.now():%Y%m%d_%H%M%S}.pdf"
-        pdf.output(str(out_path))
-        return str(out_path), f"*Exported {len(session_log)} assessment(s).*"
-    except Exception as e:
-        print(f"PDF export failed ({type(e).__name__}: {e}).")
-        return None, f"*PDF export failed ({type(e).__name__}) -- see the terminal for details.*"
+    """Thin wrapper: app.report.pdf.build_pdf_export() (A7) does the actual
+    work, with the header line reading model sha / calibration state /
+    T / referral threshold / uncertainty threshold straight from
+    THRESHOLDS, plus reject_action verbatim and the disclaimer."""
+    temperature = THRESHOLDS.temperature if THRESHOLDS else float("nan")
+    referral_threshold = THRESHOLDS.referral_threshold if THRESHOLDS else float("nan")
+    reject_tau = THRESHOLDS.reject_tau if THRESHOLDS else float("nan")
+    reject_action = THRESHOLDS.reject_action if THRESHOLDS else "n/a -- calibration inactive"
+    return build_pdf_export_v2(
+        session_log, model_sha12=MODEL_SHA12, calibration_active=CALIBRATION_ACTIVE,
+        temperature=temperature, referral_threshold=referral_threshold,
+        reject_tau=reject_tau, reject_action=reject_action,
+    )
 
 
 def predict(image, session_log):
@@ -723,33 +769,37 @@ def predict(image, session_log):
 
     x, processed_rgb = to_model_input(image)
     with torch.no_grad():
-        logits = MODEL(x)
-        probs = torch.softmax(logits, dim=-1)[0].numpy()
+        logits = MODEL(x)[0].numpy()
+    verdict_html, referral_html, conf_html, prob_dict, outcome, probs, raw = \
+        render_cards_from_logits(logits)
     grade = int(probs.argmax())
-    verdict_html, referral_html, conf_html, prob_dict = render_cards_from_probs(probs)
     cam_overlay = compute_gradcam_overlay(x, processed_rgb, grade)
-    new_log = session_log + [make_log_entry("Single Eye", probs)]
+    new_log = session_log + [make_log_entry("Single Eye", outcome, probs, raw)]
 
     yield verdict_html, referral_html, conf_html, prob_dict, processed_rgb, cam_overlay, new_log, render_log_html(new_log)
 
 
 def predict_both_eyes(left_image, right_image, session_log):
     """Screen 5 of the Fundus Console plan -- ties the app to this
-    project's real Claim 3 finding (results/claim3_both_eyes_effnetb0_384.json):
-    mean-pooling both eyes' features before classifying significantly beat
-    grading each eye separately and taking the worse grade (QWK 0.617 vs
-    0.543, paired-bootstrap CI [0.046, 0.098], excludes 0).
+    project's real Claim 3 finding, decomposed
+    (results/claim3_decomposed_tf_efficientnet_b0_384.json): most of
+    mean-pooling-both-eyes' apparent gain over per-eye-then-max is actually
+    an ordinal-vs-multinomial HEAD effect (+0.048 QWK); the FUSION effect
+    (averaging both eyes' features) is real and significant but smaller
+    (+0.024 QWK at 384px) and reversed sign on one of three backbones.
 
     HONEST CAVEAT, stated plainly rather than implied by reusing the same
     number: this reapplies that SAME IDEA -- pool both eyes' embeddings,
     classify the average -- to THIS app's own fine-tuned end-to-end model
-    and its own trained softmax head. Claim 3's actual 0.617 figure came
-    from a DIFFERENT, separately-fit ordinal-regression head on FROZEN
-    ImageNet-pretrained features, evaluated only on EyePACS patients with
-    both eyes present. This mode has not been separately re-evaluated on a
-    held-out both-eyes test set, so its own QWK is unknown -- it is a
-    principled application of a validated idea, not a re-validated number.
-    Both eyes must be the same patient for this to be meaningful.
+    and its own trained softmax head, a DIFFERENT architecture from the
+    separately-fit ordinal-regression head on FROZEN ImageNet features that
+    the decomposition above was measured on. This mode has not been
+    separately re-evaluated on a held-out both-eyes test set, so its own
+    QWK is unknown -- it is a principled application of a validated idea,
+    not a re-validated number (see Task X1 for the not-yet-run
+    measurement). Patient outcome follows DEC-2: REFER if the pooled result
+    or either individual eye is REFER. Both eyes must be the same patient
+    for this to be meaningful -- near-identical uploads are blocked below.
     """
     empty_extra = (None, None)
     if left_image is None or right_image is None:
@@ -759,16 +809,61 @@ def predict_both_eyes(left_image, right_image, session_log):
 
     yield SCANNING_HTML, "", "", None, *empty_extra, session_log, render_log_html(session_log)
 
+    if D.images_look_identical(left_image, right_image):
+        blocked = ('<div class="fc-card fc-empty">These look like the same photo. '
+                   'Upload the left and right eye of the same patient.</div>')
+        yield blocked, "", "", None, *empty_extra, session_log, render_log_html(session_log)
+        return
+
     xL, procL = to_model_input(left_image)
     xR, procR = to_model_input(right_image)
+
+    # Per-eye: same pipeline as Single Eye, independently on each image (A6.1).
+    with torch.no_grad():
+        logits_l = MODEL(xL)[0].numpy()
+        logits_r = MODEL(xR)[0].numpy()
+    probs_l = D.calibrated_probs(logits_l, THRESHOLDS) if CALIBRATION_ACTIVE else D.raw_probs(logits_l)
+    probs_r = D.calibrated_probs(logits_r, THRESHOLDS) if CALIBRATION_ACTIVE else D.raw_probs(logits_r)
+    outcome_l = D.classify_outcome(probs_l, THRESHOLDS, CALIBRATION_ACTIVE)
+    outcome_r = D.classify_outcome(probs_r, THRESHOLDS, CALIBRATION_ACTIVE)
+    grade_l, grade_r = int(probs_l.argmax()), int(probs_r.argmax())
+
+    # Pooled: mean embedding -> this model's own classifier head -> the
+    # SAME calibration/outcome pipeline as everything else (A6.2, DEC-3 --
+    # tau validated on single images, applied here to the pooled result).
     pooled_l = pooled_embedding(xL)
     pooled_r = pooled_embedding(xR)
     mean_pooled = (pooled_l + pooled_r) / 2
     with torch.no_grad():
-        logits = MODEL.classifier(mean_pooled)
-        probs = torch.softmax(logits, dim=-1)[0].numpy()
-    verdict_html, referral_html, conf_html, prob_dict = render_cards_from_probs(probs)
-    new_log = session_log + [make_log_entry("Both Eyes", probs)]
+        logits_pooled = MODEL.classifier(mean_pooled)[0].numpy()
+    verdict_html, referral_html, conf_html, prob_dict, outcome_pooled, probs_pooled, raw_pooled = \
+        render_cards_from_logits(logits_pooled)
+
+    # Patient outcome per DEC-2, worse-eye grade, and the restored caveat (A6.3-4).
+    joint = D.patient_outcome(outcome_pooled, outcome_l, outcome_r)
+    worse_grade = D.worse_eye_grade(grade_l, grade_r)
+    fusion_384 = context.load_fusion_effect_384()
+    fusion_text = f"{fusion_384:.3f}" if fusion_384 is not None else "unavailable"
+    joint_text = (joint.value if joint is not None else
+                  "unavailable (one eye could not be graded)")
+    extra_html = (
+        '<div class="fc-card">'
+        '<span class="fc-eyebrow">Per-eye &amp; patient-level detail</span>'
+        f'<div class="fc-outcome-note">Left eye: Grade {grade_l} ({GRADE_NAMES[grade_l]}), '
+        f'{outcome_l.value}. Right eye: Grade {grade_r} ({GRADE_NAMES[grade_r]}), '
+        f'{outcome_r.value}. Worse-eye grade: {worse_grade} ({GRADE_NAMES[worse_grade]}). '
+        f'Patient outcome (pooled OR either eye REFER): <b>{joint_text}</b>.</div>'
+        '<div class="fc-outcome-note" style="margin-top:10px;">Averaging both eyes\' features '
+        'helped in our study, but less than it first appeared: most of the early gain came from '
+        f'the classifier head. The fusion effect alone was {fusion_text} QWK at 384px and '
+        'reversed on one of three backbones. This mode applies the idea to this app\'s model; '
+        'its accuracy here has not been separately measured.</div>'
+        '<div class="fc-outcome-note" style="margin-top:10px; opacity:0.85;">Uncertainty threshold '
+        'validated on single images, not on combined eyes.</div>'
+        '</div>'
+    )
+    referral_html = referral_html + extra_html
+    new_log = session_log + [make_log_entry("Both Eyes", outcome_pooled, probs_pooled, raw_pooled)]
 
     yield verdict_html, referral_html, conf_html, prob_dict, procL, procR, new_log, render_log_html(new_log)
 
