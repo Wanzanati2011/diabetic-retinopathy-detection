@@ -51,17 +51,22 @@ html, body {
   font-size: 16px !important;
 }
 
-/* Force custom blocks to inherit colours regardless of Gradio chrome */
+/* Force custom blocks to inherit colours regardless of Gradio chrome.
+   "***" here (no leading dot) used to mean three chained universal
+   selectors (* * *) -- "descendant of a descendant of anything" --
+   which silently applied background/color !important to nearly the
+   whole page, not just the disclaimer box. Replaced with the real
+   class, .fc-disclaimer-block, matching what elem_classes actually sets. */
 .fc-masthead,
 .fc-card,
-***,
+.fc-disclaimer-block,
 .fc-nav,
 .fc-section {
   background: var(--fc-surface-2) !important;
   color: var(--fc-ink) !important;
 }
-.fc-masthead p, .fc-card p, *** p, .fc-section p,
-.fc-masthead strong, .fc-card strong, *** strong {
+.fc-masthead p, .fc-card p, .fc-disclaimer-block p, .fc-section p,
+.fc-masthead strong, .fc-card strong, .fc-disclaimer-block strong {
   color: var(--fc-ink) !important;
 }
 
@@ -141,15 +146,21 @@ html, body {
 }
 .fc-specstrip b { color: var(--fc-ink); font-weight: 500; }
 
-/* ---- Disclaimer box (A4: move down from second thing on page) ---- */
-*** {
+/* ---- Disclaimer box -----------------------------------------------
+   Was elem_classes=["***"], which Gradio renders as class="***" -- but a
+   CSS selector "***" (no leading dot) is NOT a class selector at all,
+   it's three chained universal selectors (* * *), i.e. "any element that
+   is a descendant of a descendant of any element" -- which matches
+   nearly every sufficiently-nested element on the ENTIRE page, not just
+   this box. Real class selector now. ---- */
+.fc-disclaimer-block {
   background: var(--fc-surface-2) !important;
   color: var(--fc-ink) !important;
   border-radius: 10px;
   padding: 14px 16px !important;
   border: 1px solid var(--fc-lavender);
 }
-*** p, *** strong { color: var(--fc-ink) !important; }
+.fc-disclaimer-block p, .fc-disclaimer-block strong { color: var(--fc-ink) !important; }
 
 /* ---- Hero section (U3) ---- */
 .fc-hero {
@@ -422,7 +433,10 @@ html, body {
 
 /* ---- Console section layout ---- */
 #fc-try {
-  padding: var(--fc-sp-24) 0;
+  /* No top padding: .tabitem below already adds space under the tab bar
+     -- stacking both was the second reported gap (tab bar -> Mode
+     toggle), on top of whatever Gradio's own block spacing adds. */
+  padding: 0 0 var(--fc-sp-24);
 }
 #fc-integrity {
   padding: var(--fc-sp-32) 0;
@@ -858,7 +872,18 @@ html, body {
    instead of a full-width bordered box.
    ==================================================================== */
 #fc-eye-mode {
-  margin: 0 0 20px;
+  /* Neutralize Gradio's own default block chrome (background/border/
+     padding/shadow from the theme) -- that's what the reported grey strip
+     under the pills actually was: our CSS only styled the INNER .wrap,
+     never the outer block Gradio wraps every component in, so its default
+     card-like background/padding was still showing through around and
+     below the pill toggle. */
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 0 20px !important;
+  min-height: 0 !important;
 }
 #fc-eye-mode > label {
   display: none !important; /* the "Mode" caption Gradio still renders a
@@ -941,7 +966,10 @@ html, body {
 .tabitem {
   background: transparent !important;
   border: none !important;
-  padding: var(--fc-sp-24) 0 !important;
+  /* Was 24px top + 24px bottom, stacked on top of #fc-try's OWN 24px top
+     padding (second reported gap: tab bar -> Mode toggle) -- trimmed the
+     top to something that just clears the tab bar's own bottom border. */
+  padding: var(--fc-sp-8) 0 var(--fc-sp-24) !important;
 }
 
 /* ---- Session log (item 3): own top-level section, not a drawer ---- */

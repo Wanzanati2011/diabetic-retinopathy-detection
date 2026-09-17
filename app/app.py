@@ -132,6 +132,34 @@ def build_disclaimer_md():
     )
 
 
+def _md_bold_to_html(text):
+    """Deliberately narrow: this project's disclaimer text only ever uses
+    **bold** and blank-line paragraph breaks, never links/lists/headers --
+    not a general markdown renderer, just enough to fold the disclaimer
+    into the same gr.HTML() block as the masthead/hero (see
+    build_page_header_html()) instead of its own gr.Markdown() component,
+    which is what was causing a large blank gap: each top-level Gradio
+    component gets its own block wrapper with Gradio's own spacing around
+    it, so 3 separate components (masthead/disclaimer/hero) meant 2 extra
+    gaps that don't exist when it's one HTML string."""
+    import re
+    paragraphs = text.split("\n\n")
+    out = []
+    for para in paragraphs:
+        para = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", para)
+        out.append(f"<p>{para}</p>")
+    return "".join(out)
+
+
+def build_page_header_html():
+    """Masthead + disclaimer + hero as ONE gr.HTML() component -- see
+    _md_bold_to_html()'s docstring for why this was split into three
+    separate components before (a large, unintended blank gap between
+    the disclaimer and the hero headline)."""
+    disclaimer_html = f'<div class="fc-disclaimer-block">{_md_bold_to_html(build_disclaimer_md())}</div>'
+    return MASTHEAD_HTML + disclaimer_html + build_hero_html()
+
+
 def build_model_info_md(m):
     """B2: every number below comes from METRICS (app/data/metrics.py), not
     typed here -- see R3/T-9."""
@@ -492,11 +520,14 @@ def build_hero_html():
         '<div class="fc-disclaimer-chip">● Research prototype · not a medical device</div>'
     )
 
+    # The kicker + headline text block that used to open this section was
+    # removed on request -- it duplicated the masthead's own kicker span
+    # and H1 title immediately above, so the page effectively said
+    # "Diabetic Retinopathy Detector" / "Diabetic Retinopathy Screening"
+    # twice in a row before any real content. Stat tiles + disclaimer
+    # chip are the actual content of this section and are unaffected.
     return (
         '<div class="fc-hero">'
-        '<span class="fc-kicker">Diabetic Retinopathy Screening &middot; Research Prototype</span>'
-        '<h2 class="fc-hero-headline">A diabetic retinopathy screening study, and an honest '
-        'look at how to evaluate one.</h2>'
         f'{tiles_html}'
         f'{disclaimer_chip}'
         '</div>'
@@ -1383,8 +1414,12 @@ def build_demo():
         title="Diabetic Retinopathy Screening Assistant (Research Prototype)",
         delete_cache=(3600, 3600),
     ) as demo:
-        gr.HTML(MASTHEAD_HTML)
-        gr.Markdown(build_disclaimer_md(), elem_classes=["***"])
+        # Masthead + disclaimer + hero as ONE gr.HTML() component --
+        # merging these (previously 3 separate top-level components) got
+        # rid of a large blank gap: Gradio wraps every top-level component
+        # in its own block with its own spacing, so 3 components meant 2
+        # unwanted gaps between conceptually-one header area.
+        gr.HTML(build_page_header_html())
 
         # Hide Gradio's own footer / API link via inline style injected
         # into the page head -- done as a hidden component so it renders
@@ -1394,10 +1429,6 @@ def build_demo():
         # request for separate sections/pages instead of one scrolling
         # page with jump-links.)
         gr.HTML(f'<style>{U1_NAV_HIDE}</style>')
-
-        # U3: hero section with headline, stat tiles, and disclaimer chip.
-        # Shown above the tabs since it's global context, not one section.
-        gr.HTML(build_hero_html())
 
         # Shared across every section -- a plain Python list living in THIS
         # browser session only (Gradio's gr.State), not written to disk or
