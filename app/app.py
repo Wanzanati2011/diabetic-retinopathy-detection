@@ -74,6 +74,19 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+# Deploy-only fix: Hugging Face Spaces' Gradio SDK loads app_file
+# ("app/app.py") via importlib using the module name "app" (derived from
+# the file's own basename), which registers sys.modules["app"] pointing
+# at THIS SCRIPT ITSELF -- a plain module, not a package. That collides
+# with our own `app` package (app/core, app/data, app/render, app/report),
+# so `from app.core import ...` below failed on the Space with
+# "ModuleNotFoundError: No module named 'app.core'; 'app' is not a
+# package" (confirmed via the Space's own runtime logs) even though the
+# exact same code runs fine locally via `python app\app.py`, where no such
+# collision is ever created. Dropping the stale entry forces Python to
+# freshly resolve `app` as the real package at PROJECT_ROOT/app/__init__.py.
+sys.modules.pop("app", None)
+
 from app.core import decision as D  # noqa: E402
 from app.core.session import make_log_entry as make_log_entry_v2  # noqa: E402
 from app.report.pdf import build_pdf_export as build_pdf_export_v2  # noqa: E402
