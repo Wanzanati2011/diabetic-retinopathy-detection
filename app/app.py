@@ -52,6 +52,15 @@ Usage (from the project root, venv active):
     python app\\app.py
 Then open the printed local URL (usually http://127.0.0.1:7860) in a browser.
 """
+try:
+    # Must import before torch -- patches torch.cuda.* for ZeroGPU. Only
+    # present on Hugging Face Spaces (preinstalled/platform-managed there,
+    # per that Space's requirements.txt); not installed for local dev, so
+    # this degrades to a no-op rather than crashing `python app\app.py`.
+    import spaces
+except ImportError:
+    spaces = None
+
 import datetime
 import json
 import sys
@@ -81,6 +90,19 @@ from app.core.model import (  # noqa: E402
 from app.core.inference import to_model_input, pooled_embedding  # noqa: E402
 from app.core.gradcam import compute_gradcam_overlay_with_timeout  # noqa: E402
 from app.render import evidence  # noqa: E402
+
+if spaces is not None:
+    @spaces.GPU(duration=1)
+    def _noop():
+        """Free-tier Spaces can't get cpu-basic anymore -- only ZeroGPU (or
+        Static). This model is small and CPU-only (see load_model()'s
+        map_location="cpu"), so all real inference stays on CPU exactly as
+        it runs locally. ZeroGPU just refuses to start a Space with zero
+        decorated functions, so this no-op satisfies that check without
+        ever actually requesting a GPU -- nothing here burns a visitor's
+        ZeroGPU quota. Never called; its only job is to exist.
+        """
+        pass
 
 METRICS = M.load_metrics()
 
