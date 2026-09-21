@@ -885,6 +885,25 @@ html, body {
   margin: 0 0 20px !important;
   min-height: 0 !important;
 }
+/* Real markup (from a rendered DOM dump): div.form > fieldset#fc-eye-mode.block.
+   The grey full-width band was div.form -- Gradio's wrapper around form
+   components, which has its own background/border/padding and no id, so
+   rules on #fc-eye-mode alone could never reach it. */
+.form:has(> #fc-eye-mode) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+fieldset#fc-eye-mode {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
 #fc-eye-mode > label {
   display: none !important; /* the "Mode" caption Gradio still renders a
                                 slot for, even with show_label=False */

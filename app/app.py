@@ -564,7 +564,7 @@ def build_hero_html():
     tiles_html = (
         '<div style="display:flex;gap:16px;margin:20px 0;flex-wrap:wrap;">'
         f'<div class="fc-stat-tile"><span class="fc-stat-value">{qwk_str}</span>'
-        f'<span class="fc-stat-label">QWK of a model that sees *no pixels*, '
+        f'<span class="fc-stat-label">QWK of a model that sees no pixels, '
         f'only the other eye\'s label</span></div>'
         f'<div class="fc-stat-tile"><span class="fc-stat-value">{sens_text}</span>'
         f'<span class="fc-stat-label">referable patients caught</span></div>'
