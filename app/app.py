@@ -81,11 +81,33 @@ if str(PROJECT_ROOT) not in sys.path:
 # with our own `app` package (app/core, app/data, app/render, app/report),
 # so `from app.core import ...` below failed on the Space with
 # "ModuleNotFoundError: No module named 'app.core'; 'app' is not a
-# package" (confirmed via the Space's own runtime logs) even though the
-# exact same code runs fine locally via `python app\app.py`, where no such
-# collision is ever created. Dropping the stale entry forces Python to
-# freshly resolve `app` as the real package at PROJECT_ROOT/app/__init__.py.
-sys.modules.pop("app", None)
+# package" (confirmed via the Space's own runtime logs). This never shows
+# up locally: `python app\app.py` registers the running script ONLY as
+# __main__, and the previously deployed app.py was a single monolithic
+# file with no app.* submodule imports at all, so the collision never
+# existed before this project's module split (app/core, app/data,
+# app/render, app/report).
+#
+# A first fix (sys.modules.pop("app", None), letting a bare `import app`
+# resolve fresh) caused a WORSE failure: RecursionError, maximum recursion
+# depth exceeded -- confirming the SDK's own loader has a hook that
+# re-triggers itself (presumably re-running app_file) whenever "app"
+# disappears from sys.modules, looping forever. So: never remove the
+# entry. Instead, construct the REAL `app` package object directly via
+# low-level importlib machinery (bypassing whatever import hook the SDK
+# has installed for the bare `import app` statement -- spec_from_file_
+# location + module_from_spec + exec_module works below the level any
+# meta_path finder intercepts) and overwrite sys.modules["app"] with THAT,
+# giving it a proper __path__ so `app.core` resolves as an ordinary
+# submodule from here on, without ever triggering another `import app`.
+import importlib.util as _ilu
+
+_app_init = PROJECT_ROOT / "app" / "__init__.py"
+_app_spec = _ilu.spec_from_file_location(
+    "app", str(_app_init), submodule_search_locations=[str(PROJECT_ROOT / "app")])
+_app_pkg = _ilu.module_from_spec(_app_spec)
+sys.modules["app"] = _app_pkg
+_app_spec.loader.exec_module(_app_pkg)
 
 from app.core import decision as D  # noqa: E402
 from app.core.session import make_log_entry as make_log_entry_v2  # noqa: E402
